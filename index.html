@@ -138,6 +138,7 @@
   <button class="tab-btn active" onclick="showView('form')">📝 填写资料</button>
   <button class="tab-btn" onclick="showView('preview')">📄 预览报价单</button>
   <button class="tab-btn" onclick="showView('records');loadRecords()">📋 记录</button>
+  <button class="tab-btn" onclick="location.reload()" style="color:#f87171" title="重新开始">🔄 新报价</button>
 </div>
 
 <!-- ═══ FORM VIEW ═══ -->
@@ -442,7 +443,7 @@ function generateQuote() {
       </div>
       <div class="section-heading">付款资料 Payment Details</div>
       <div class="bank-box">
-        <div><div class="b-label">Bank / 银行</div><div class="b-bank">Maybank</div><div class="b-type">Current Account </div></div>
+        <div><div class="b-label">Bank / 银行</div><div class="b-bank">Maybank</div><div class="b-type">Current Account（活期户口）</div></div>
         <div class="b-acc-wrap"><div class="b-acc-lbl">Account No. / 账号</div><div class="b-acc">5013 0170 7441</div><div class="b-name">CGW Risk Management</div></div>
       </div>
       <div style="margin-top:16px;background:#fffbea;border:1.5px solid #f0d98c;border-radius:10px;padding:14px 18px;font-size:13px;line-height:1.9;color:#5a4500;">
@@ -453,7 +454,7 @@ function generateQuote() {
     <div style="padding:12px 36px;font-size:11px;color:#999;text-align:center;border-top:1px dashed var(--border);">
       ⚠️ 免责声明：如有失误，一切资讯皆以公司 Quotation 为准。
     </div>
-    <div class="quote-footer">此报价单由 CGW Risk Management 发出 · 如有疑问请联络Jacky 0182011556 · This quotation is computer-generated.</div>
+    <div class="quote-footer">此报价单由 CGW Risk Management 发出 · 如有疑问请联络您的代理员 · This quotation is computer-generated.</div>
   `;
 
   showView('preview');
