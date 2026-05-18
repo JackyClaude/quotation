@@ -138,6 +138,7 @@
   <button class="tab-btn active" onclick="showView('form')">📝 填写资料</button>
   <button class="tab-btn" onclick="showView('preview')">📄 预览报价单</button>
   <button class="tab-btn" onclick="showView('records');loadRecords()">📋 记录</button>
+  <button class="tab-btn" onclick="showView('summary')">📝 文字摘要</button>
   <button class="tab-btn" onclick="location.reload()" style="color:#f87171" title="重新开始">🔄 新报价</button>
 </div>
 
@@ -179,8 +180,21 @@
         </div>
       </div>
       <div class="field">
-        <label>Coverage Period（保险期限）</label>
-        <input type="text" id="f_period" placeholder="e.g. 01/01/2026 - 31/12/2026">
+        <label>车保障金额 Sum Insured</label>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:13px;color:var(--gray)">RM</span>
+          <input type="number" id="f_suminsured" placeholder="0.00" style="flex:1">
+        </div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="field">
+        <label>保障开始日期 Start Date</label>
+        <input type="date" id="f_startdate" onchange="updateEndDate()" style="background:#fafafa;border:1.5px solid var(--border);border-radius:8px;padding:10px 14px;font-family:'DM Sans',sans-serif;font-size:14px;outline:none;">
+      </div>
+      <div class="field">
+        <label>保障截止日期 End Date</label>
+        <input type="date" id="f_enddate" style="background:#fafafa;border:1.5px solid var(--border);border-radius:8px;padding:10px 14px;font-family:'DM Sans',sans-serif;font-size:14px;outline:none;">
       </div>
     </div>
   </div>
@@ -262,6 +276,17 @@
   </div>
 </div>
 
+<!-- ═══ SUMMARY VIEW ═══ -->
+<div class="view" id="view-summary">
+  <div class="section" style="max-width:600px">
+    <div class="section-title">文字摘要 Text Summary</div>
+    <p style="font-size:13px;color:var(--gray);margin-bottom:14px">点击下方文字框，全选后复制发给顾客。</p>
+    <textarea id="summary-text" readonly onclick="this.select()" style="width:100%;min-height:300px;border:1.5px solid var(--border);border-radius:10px;padding:16px;font-family:'DM Sans',sans-serif;font-size:14px;line-height:1.9;resize:vertical;background:#fafafa;outline:none;color:#1a1a2e;cursor:text"></textarea>
+    <button onclick="copySummary()" style="margin-top:10px;background:var(--navy);color:var(--gold-light);border:none;border-radius:8px;padding:10px 22px;font-size:13.5px;font-weight:600;cursor:pointer;width:100%">复制文字摘要</button>
+    <div id="copy-status" style="text-align:center;font-size:13px;color:#16a34a;margin-top:8px;height:20px"></div>
+  </div>
+</div>
+
 <script>
 const SHEET_URL = 'https://script.google.com/macros/s/AKfycbwQudTIK1WcI-6T9GE37rea13GNoxI104J9TD1YvQGI1dYkHqHX7kdT9MRnvanYGYBgSQ/exec';
 
@@ -276,8 +301,24 @@ function showView(v) {
   document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
   document.getElementById('view-' + v).classList.add('active');
-  const idx = {form:0, preview:1, records:2}[v];
+  const idx = {form:0, preview:1, records:2, summary:3}[v];
   document.querySelectorAll('.tab-btn')[idx].classList.add('active');
+}
+
+
+// DATE HELPERS
+function updateEndDate() {
+  const start = document.getElementById('f_startdate').value;
+  if (!start) return;
+  const d = new Date(start);
+  d.setFullYear(d.getFullYear() + 1);
+  d.setDate(d.getDate() - 1);
+  document.getElementById('f_enddate').value = d.toISOString().split('T')[0];
+}
+function formatDateDisplay(dateStr) {
+  if (!dateStr) return '';
+  const [y,m,day] = dateStr.split('-');
+  return day+'/'+m+'/'+y;
 }
 
 // ── INSURER ──
@@ -381,10 +422,13 @@ const riderMeta = {
 
 // ── GENERATE QUOTE ──
 function generateQuote() {
-  const name    = document.getElementById('f_name').value.trim() || '—';
-  const plate   = document.getElementById('f_plate').value.trim().toUpperCase() || '—';
-  const ncd     = document.getElementById('f_ncd').value.trim();
-  const period  = document.getElementById('f_period').value.trim() || '—';
+  const name       = document.getElementById('f_name').value.trim() || '—';
+  const plate      = document.getElementById('f_plate').value.trim().toUpperCase() || '—';
+  const ncd        = document.getElementById('f_ncd').value.trim();
+  const sumInsured = parseFloat(document.getElementById('f_suminsured').value) || 0;
+  const startDate  = document.getElementById('f_startdate').value;
+  const endDate    = document.getElementById('f_enddate').value;
+  const period     = (startDate && endDate) ? formatDateDisplay(startDate)+' - '+formatDateDisplay(endDate) : '—';
   const premium = parseFloat(document.getElementById('f_premium').value) || 0;
   const roadtax = parseFloat(document.getElementById('f_roadtax').value) || 0;
   const svc     = delivery ? 15 : 5;
@@ -410,6 +454,7 @@ function generateQuote() {
     : allRiders.map(r=>`<div class="rider-item"><span class="r-name">${r.label}</span><span class="r-amt">${r.amt||''}</span></div>`).join('');
 
   const ncdCell = ncd ? `<div class="info-cell"><div class="lbl">NCD（免赔折扣）</div><div class="val">${ncd}%</div></div>` : '';
+  const sumCell = sumInsured > 0 ? `<div class="info-cell"><div class="lbl">Sum Insured / 车保障金额</div><div class="val">RM ${sumInsured.toLocaleString('en-MY',{minimumFractionDigits:2})}</div></div>` : '';
   const insurerLine = insurer ? `<div class="quote-insurer">🏢 ${insurer}</div>` : '';
 
   document.getElementById('quote-output').innerHTML = `
@@ -429,8 +474,9 @@ function generateQuote() {
         <div class="info-cell"><div class="lbl">Vehicle Owner / 车主</div><div class="val">${name}</div></div>
         <div class="info-cell"><div class="lbl">Plate No. / 车牌号码</div><div class="val">${plate}</div></div>
         ${ncdCell}
-        <div class="info-cell" ${ncd?'style="grid-column:2"':''}><div class="lbl">Coverage Period / 保险期限</div><div class="val">${period}</div></div>
-        <div class="info-cell" style="${ncd?'grid-column:1/-1':''}"><div class="lbl">Quotation Date / 报价日期</div><div class="val">${today}</div></div>
+        ${sumCell}
+        <div class="info-cell"><div class="lbl">Coverage Period / 保险期限</div><div class="val">${period}</div></div>
+        <div class="info-cell" style="grid-column:1/-1"><div class="lbl">Quotation Date / 报价日期</div><div class="val">${today}</div></div>
       </div>
       <div class="section-heading">附加保障 Add-on Riders</div>
       <div class="rider-list">${riderHtml}</div>
@@ -458,6 +504,44 @@ function generateQuote() {
   `;
 
   showView('preview');
+  // ── BUILD TEXT SUMMARY ──
+  const shortInsurer = insurer ? insurer.replace(' General Insurance','').replace(' General Ins','') : '—';
+  let sumLines = [];
+  sumLines.push(shortInsurer + ' plan');
+  sumLines.push(plate);
+  sumLines.push(period);
+  sumLines.push('');
+  sumLines.push('车保险 RM' + premium.toFixed(2));
+  if (sumInsured > 0) sumLines.push('✅ Cover RM' + Number(sumInsured).toLocaleString('en-MY',{minimumFractionDigits:0}));
+  const riderSumMap = {
+    windscreen: (amt) => '✅ 大镜' + (amt ? ' RM' + amt : ''),
+    dpa:        (amt) => '✅ PA' + (amt ? ' (sum assured RM' + amt + ')' : ''),
+    fsp:        ()    => '✅ Full Special Perils',
+    llp:        ()    => '✅ 乘客险',
+    lop:        ()    => '✅ 第三方乘客险',
+    wce:        ()    => '✅ All Driver',
+    srcc:       ()    => '✅ Strike, Riot & Civil Commotion',
+    tow:        ()    => '✅ 24-Hour Unlimited Towing',
+  };
+  document.querySelectorAll('.rider-row').forEach(row => {
+    const cb = row.querySelector('input[type=checkbox]');
+    if (!cb || !cb.checked) return;
+    const key = cb.dataset.key;
+    const fn = riderSumMap[key];
+    if (!fn) return;
+    let amtVal = '';
+    if (riderMeta[key].hasAmt) { const v = parseFloat(row.querySelector('.rider-amt')?.value)||0; if(v>0) amtVal=v.toFixed(0); }
+    sumLines.push(fn(amtVal));
+  });
+  getCustomRiders().forEach(r => {
+    sumLines.push('✅ ' + r.label + (r.amt ? ' ' + r.amt : ''));
+  });
+  sumLines.push('');
+  sumLines.push('加roadtax RM' + roadtax.toFixed(2));
+  if (svc > 0) sumLines.push('Service charge RM' + svc.toFixed(2));
+  sumLines.push('Total RM' + total.toFixed(2));
+  document.getElementById('summary-text').value = sumLines.join('\n');
+
 
   // Save to Google Sheet
   const ridersSummary = allRiders.map(r=>r.amt?`${r.label}(${r.amt})`:r.label).join(', ') || '无';
@@ -532,6 +616,20 @@ function filterRecords() {
     return row.some(cell=>String(cell||'').toLowerCase().includes(q));
   });
   renderRecords(filtered);
+}
+
+// ── COPY SUMMARY ──
+function copySummary() {
+  const ta = document.getElementById('summary-text');
+  ta.select();
+  navigator.clipboard.writeText(ta.value).then(() => {
+    document.getElementById('copy-status').textContent = '已复制！';
+    setTimeout(() => document.getElementById('copy-status').textContent = '', 2500);
+  }).catch(() => {
+    try { document.execCommand('copy'); } catch(e) {}
+    document.getElementById('copy-status').textContent = '已复制！';
+    setTimeout(() => document.getElementById('copy-status').textContent = '', 2500);
+  });
 }
 </script>
 </body>
