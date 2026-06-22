@@ -506,13 +506,41 @@ function generateQuote() {
   showView('preview');
   // ── BUILD TEXT SUMMARY ──
   const shortInsurer = insurer ? insurer.replace(' General Insurance','').replace(' General Ins','') : '—';
+
+  // Track which riders are NOT checked (for upsell line)
+  const allRiderLabels = {
+    windscreen: '大镜 Windscreen',
+    dpa:        'PA Driver Personal Accident',
+    fsp:        'Full Special Perils',
+    llp:        '乘客险 Legal Liability to Passengers',
+    lop:        '第三方乘客险 Legal Liability of Passengers',
+    wce:        'All Driver (Waiver of Excess)',
+    srcc:       'Strike, Riot & Civil Commotion',
+    tow:        '24-Hour Unlimited Towing',
+  };
+  const checkedKeys = new Set();
+  document.querySelectorAll('.rider-row').forEach(row => {
+    const cb = row.querySelector('input[type=checkbox]');
+    if (cb && cb.checked) checkedKeys.add(cb.dataset.key);
+  });
+  const uncheckedLabels = Object.entries(allRiderLabels)
+    .filter(([k]) => !checkedKeys.has(k))
+    .map(([,v]) => v);
+
   let sumLines = [];
-  sumLines.push(shortInsurer + ' plan');
-  sumLines.push(plate);
-  sumLines.push(period);
+
+  // Opening
+  sumLines.push('你好！😊 你的车保险要更新了，我来通知你接下来的保险资讯：');
   sumLines.push('');
-  sumLines.push('车保险 RM' + premium.toFixed(2));
+  sumLines.push('━━━━━━━━━━━━━━━━━━━━');
+  sumLines.push('🚗 ' + shortInsurer + ' plan');
+  sumLines.push('车牌：' + plate);
+  sumLines.push('保障期：' + period);
+  sumLines.push('━━━━━━━━━━━━━━━━━━━━');
+  sumLines.push('');
+  sumLines.push('💰 车保险 RM' + premium.toFixed(2));
   if (sumInsured > 0) sumLines.push('✅ Cover RM' + Number(sumInsured).toLocaleString('en-MY',{minimumFractionDigits:0}));
+
   const riderSumMap = {
     windscreen: (amt) => '✅ 大镜' + (amt ? ' RM' + amt : ''),
     dpa:        (amt) => '✅ PA' + (amt ? ' (sum assured RM' + amt + ')' : ''),
@@ -536,10 +564,33 @@ function generateQuote() {
   getCustomRiders().forEach(r => {
     sumLines.push('✅ ' + r.label + (r.amt ? ' ' + r.amt : ''));
   });
+
+  // Upsell line for unchecked riders
+  if (uncheckedLabels.length > 0) {
+    sumLines.push('');
+    sumLines.push('💡 你还能增加：' + uncheckedLabels.join('、') + '，有兴趣请提问！');
+  }
+
   sumLines.push('');
-  sumLines.push('加roadtax RM' + roadtax.toFixed(2));
-  if (svc > 0) sumLines.push('Service charge RM' + svc.toFixed(2));
-  sumLines.push('Total RM' + total.toFixed(2));
+  sumLines.push('━━━━━━━━━━━━━━━━━━━━');
+  sumLines.push('🧾 费用明细：');
+  sumLines.push('车保险：RM' + premium.toFixed(2));
+  sumLines.push('Road Tax：RM' + roadtax.toFixed(2));
+  sumLines.push('Service Charge (' + (delivery ? 'Roadtax Delivery' : 'Digital Roadtax') + ')：RM' + svc.toFixed(2));
+  sumLines.push('');
+  sumLines.push('💵 Total：RM' + total.toFixed(2));
+  sumLines.push('━━━━━━━━━━━━━━━━━━━━');
+  sumLines.push('');
+  sumLines.push('🏦 请 transfer 至：');
+  sumLines.push('Maybank（Current Account）');
+  sumLines.push('CGW Risk Management');
+  sumLines.push('5013 0170 7441');
+  sumLines.push('');
+  sumLines.push('Transfer 后请 send 给我 payment receipt，谢谢！😊');
+  if (!delivery) {
+    sumLines.push('由于您选择了 Digital Roadtax，请同时 send 您的 MyJPJ 登记 email。');
+  }
+
   document.getElementById('summary-text').value = sumLines.join('\n');
 
 
