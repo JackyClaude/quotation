@@ -223,6 +223,21 @@
         <input type="date" id="f_enddate" style="background:#fafafa;border:1.5px solid var(--border);border-radius:8px;padding:10px 14px;font-family:'DM Sans',sans-serif;font-size:14px;outline:none;">
       </div>
     </div>
+    <div class="row" style="margin-top:4px">
+      <div class="field full">
+        <label>车辆保障类型 Vehicle Value Type</label>
+        <div style="display:flex;gap:10px;margin-top:4px">
+          <div class="delivery-opt selected" id="opt-agreed" onclick="setValueType('agreed')">
+            Agreed Value（议定价值）
+            <div class="sub">保额固定，不依市价折旧</div>
+          </div>
+          <div class="delivery-opt" id="opt-market" onclick="setValueType('market')">
+            Market Value（市场价值）
+            <div class="sub">理赔时按市价计算</div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- Riders -->
@@ -389,6 +404,13 @@ function setDelivery(val) {
   document.getElementById('opt-nodelivery').classList.toggle('selected', !val);
 }
 
+let vehicleValueType = 'agreed';
+function setValueType(val) {
+  vehicleValueType = val;
+  document.getElementById('opt-agreed').classList.toggle('selected', val==='agreed');
+  document.getElementById('opt-market').classList.toggle('selected', val==='market');
+}
+
 // ── ROADTAX CALC ──
 function calcRoadtax() {
   const ccInput = document.getElementById('f_cc');
@@ -420,16 +442,16 @@ function calcRoadtax() {
 }
 
 // ── QUOTATION NUMBER ──
-function getQuotationNo() {
+function getQuotationNo(prefix='MI') {
   const now = new Date();
   const y = now.getFullYear();
   const m = String(now.getMonth()+1).padStart(2,'0');
   const d = String(now.getDate()).padStart(2,'0');
   const dateKey = `${y}${m}${d}`;
-  const storageKey = `cgw_qno_${dateKey}`;
+  const storageKey = `cgw_qno_${prefix}_${dateKey}`;
   let count = parseInt(localStorage.getItem(storageKey) || '0') + 1;
   localStorage.setItem(storageKey, count);
-  return `MI${dateKey}${String(count).padStart(3,'0')}`;
+  return `${prefix}${dateKey}${String(count).padStart(3,'0')}`;
 }
 
 // ── FORMAT ──
@@ -481,6 +503,7 @@ function generateQuote() {
 
   const ncdCell = ncd ? `<div class="info-cell"><div class="lbl">NCD（免赔折扣）</div><div class="val">${ncd}%</div></div>` : '';
   const sumCell = sumInsured > 0 ? `<div class="info-cell"><div class="lbl">Sum Insured / 车保障金额</div><div class="val">RM ${sumInsured.toLocaleString('en-MY',{minimumFractionDigits:2})}</div></div>` : '';
+  const valueTypeCell = `<div class="info-cell"><div class="lbl">Value Type / 保障类型</div><div class="val">${vehicleValueType==='agreed'?'Agreed Value（议定价值）':'Market Value（市场价值）'}</div></div>`;
   const insurerLine = insurer ? `<div class="quote-insurer">🏢 ${insurer}</div>` : '';
 
   document.getElementById('quote-output').innerHTML = `
@@ -501,6 +524,7 @@ function generateQuote() {
         <div class="info-cell"><div class="lbl">Plate No. / 车牌号码</div><div class="val">${plate}</div></div>
         ${ncdCell}
         ${sumCell}
+        ${valueTypeCell}
         <div class="info-cell"><div class="lbl">Coverage Period / 保险期限</div><div class="val">${period}</div></div>
         <div class="info-cell" style="grid-column:1/-1"><div class="lbl">Quotation Date / 报价日期</div><div class="val">${today}</div></div>
       </div>
@@ -565,7 +589,7 @@ function generateQuote() {
   sumLines.push('━━━━━━━━━━━━━━━━━━━━');
   sumLines.push('');
   sumLines.push('💰 车保险 RM' + premium.toFixed(2));
-  if (sumInsured > 0) sumLines.push('✅ Cover RM' + Number(sumInsured).toLocaleString('en-MY',{minimumFractionDigits:0}));
+  if (sumInsured > 0) sumLines.push('✅ Cover RM' + Number(sumInsured).toLocaleString('en-MY',{minimumFractionDigits:0}) + ' (' + (vehicleValueType==='agreed'?'Agreed Value':'Market Value') + ')');
 
   const riderSumMap = {
     windscreen: (amt) => '✅ 大镜' + (amt ? ' RM' + amt : ''),
@@ -903,7 +927,7 @@ function generateTravelQuote() {
   const total  = calcTravelPremium();
   if (!total) { alert('请确认所有选项后再生成！'); return; }
 
-  const qNo  = getQuotationNo();
+  const qNo  = getQuotationNo('TI');
   const today = new Date().toLocaleDateString('zh-MY',{year:'numeric',month:'long',day:'numeric'});
   const depFmt = dep ? formatDateDisplay(dep) : '—';
   const retFmt = ret ? formatDateDisplay(ret) : '—';
