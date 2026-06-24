@@ -228,11 +228,11 @@
         <label>车辆保障类型 Vehicle Value Type</label>
         <div style="display:flex;gap:10px;margin-top:4px">
           <div class="delivery-opt selected" id="opt-agreed" onclick="setValueType('agreed')">
-            Agreed Value（议定价值）
+            Agreed Value
             <div class="sub">保额固定，不依市价折旧</div>
           </div>
           <div class="delivery-opt" id="opt-market" onclick="setValueType('market')">
-            Market Value（市场价值）
+            Market Value
             <div class="sub">理赔时按市价计算</div>
           </div>
         </div>
@@ -503,7 +503,7 @@ function generateQuote() {
 
   const ncdCell = ncd ? `<div class="info-cell"><div class="lbl">NCD（免赔折扣）</div><div class="val">${ncd}%</div></div>` : '';
   const sumCell = sumInsured > 0 ? `<div class="info-cell"><div class="lbl">Sum Insured / 车保障金额</div><div class="val">RM ${sumInsured.toLocaleString('en-MY',{minimumFractionDigits:2})}</div></div>` : '';
-  const valueTypeCell = `<div class="info-cell"><div class="lbl">Value Type / 保障类型</div><div class="val">${vehicleValueType==='agreed'?'Agreed Value（议定价值）':'Market Value（市场价值）'}</div></div>`;
+  const valueTypeCell = `<div class="info-cell"><div class="lbl">Value Type / 保障类型</div><div class="val">${vehicleValueType==='agreed'?'Agreed Value':'Market Value'}</div></div>`;
   const insurerLine = insurer ? `<div class="quote-insurer">🏢 ${insurer}</div>` : '';
 
   document.getElementById('quote-output').innerHTML = `
@@ -906,13 +906,16 @@ function calcTravelPremium() {
     }
   }
 
-  const total = basePremium + covidPremium;
+  const subTotal = basePremium + covidPremium;
+  const stampDuty = subTotal > 150 ? 10 : 0;
+  const total = subTotal + stampDuty;
   document.getElementById('t-premium-amount').textContent = 'RM ' + total.toFixed(2);
   document.getElementById('t-premium-breakdown').innerHTML =
     breakdown + '<br>计划: ' + PLAN_LABEL[tPlan] + ' | ' + AREA_LABEL[tArea] + ' | ' + COVER_LABEL[tCover] +
-    (tCovidOn ? '<br>✅ 含Covid-19附加保障' : '');
+    (tCovidOn ? '<br>✅ 含Covid-19附加保障' : '') +
+    (stampDuty > 0 ? '<br>+ Stamp Duty: RM10.00' : '');
   resEl.style.display='block';
-  return total;
+  return {total, basePremium, covidPremium, stampDuty};
 }
 
 function generateTravelQuote() {
@@ -924,8 +927,9 @@ function generateTravelQuote() {
   const purpose= document.getElementById('t_purpose').value.trim() || 'Leisure';
   const days   = getTravelDays();
   if (!days) { alert('请填写出发和回程日期！'); return; }
-  const total  = calcTravelPremium();
-  if (!total) { alert('请确认所有选项后再生成！'); return; }
+  const calc = calcTravelPremium();
+  if (!calc) { alert('请确认所有选项后再生成！'); return; }
+  const { total, stampDuty } = calc;
 
   const qNo  = getQuotationNo('TI');
   const today = new Date().toLocaleDateString('zh-MY',{year:'numeric',month:'long',day:'numeric'});
@@ -951,6 +955,7 @@ function generateTravelQuote() {
     }
   }
 
+  const localSubTotal = basePremium + covidPremium;
   // Key benefits per plan
   const benefits = {
     silver:  {medical:'RM 300,000', accident:'RM 300,000 (18-85yrs)', cancellation:'RM 20,000', baggage:'RM 5,000'},
@@ -1000,6 +1005,7 @@ function generateTravelQuote() {
       <div class="price-table">
         <div class="price-line"><span>Travel Insurance Premium（旅游保险保费）</span><span>RM ${basePremium.toFixed(2)}</span></div>
         ${tCovidOn ? `<div class="price-line"><span>Covid-19 Add-on Premium（附加保费）</span><span>RM ${covidPremium.toFixed(2)}</span></div>` : ''}
+        ${stampDuty > 0 ? `<div class="price-line"><span>Stamp Duty（印花税）</span><span>RM ${stampDuty.toFixed(2)}</span></div>` : ''}
         <div class="price-line total"><span>Total Payable / 总应付款</span><span>RM ${total.toFixed(2)}</span></div>
       </div>
 
@@ -1044,6 +1050,7 @@ function generateTravelQuote() {
     '💰 保费明细：',
     `旅游保险保费：RM ${basePremium.toFixed(2)}`,
     ...(tCovidOn ? [`Covid-19附加：RM ${covidPremium.toFixed(2)}`] : []),
+    ...(stampDuty > 0 ? [`Stamp Duty（印花税）：RM ${stampDuty.toFixed(2)}`] : []),
     `💵 Total：RM ${total.toFixed(2)}`,
     '━━━━━━━━━━━━━━━━━━━━',
     '',
