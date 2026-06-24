@@ -129,6 +129,31 @@
     .view{padding:0;max-width:100%;}
     .quote-card{border:none;box-shadow:none;border-radius:0;}
   }
+
+  /* TRAVEL INSURANCE */
+  .t-section{background:#fff;border-radius:12px;padding:22px 26px;margin-bottom:16px;border:1px solid var(--border);}
+  .t-section-title{font-size:11px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--gold);margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--border);}
+  .ins-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px;}
+  .ins-card{border:1.5px solid var(--border);border-radius:10px;padding:12px 14px;cursor:pointer;transition:all .2s;background:#fafafa;}
+  .ins-card.selected{border-color:var(--navy);background:#f0f4ff;}
+  .ins-card .ic-name{font-size:13px;font-weight:600;color:var(--navy);}
+  .ins-card .ic-sub{font-size:11px;color:var(--gray);margin-top:2px;}
+  .plan-pills{display:flex;gap:8px;flex-wrap:wrap;}
+  .plan-pill{border:1.5px solid var(--border);border-radius:20px;padding:7px 18px;font-size:13px;font-weight:500;cursor:pointer;background:#fafafa;transition:all .2s;user-select:none;}
+  .plan-pill.selected{border-color:var(--navy);background:#f0f4ff;color:var(--navy);font-weight:700;}
+  .area-pill{border:1.5px solid var(--border);border-radius:8px;padding:9px 14px;font-size:12.5px;cursor:pointer;background:#fafafa;transition:all .2s;flex:1;text-align:center;}
+  .area-pill.selected{border-color:var(--navy);background:#f0f4ff;color:var(--navy);font-weight:600;}
+  .cover-pill{border:1.5px solid var(--border);border-radius:8px;padding:8px 14px;font-size:12.5px;cursor:pointer;background:#fafafa;transition:all .2s;flex:1;text-align:center;}
+  .cover-pill.selected{border-color:var(--navy);background:#f0f4ff;color:var(--navy);font-weight:600;}
+  .premium-result{background:linear-gradient(135deg,var(--navy),#1a3560);border-radius:12px;padding:20px 24px;color:#fff;margin-top:8px;}
+  .premium-result .pr-label{font-size:11px;letter-spacing:.8px;text-transform:uppercase;color:rgba(255,255,255,.6);margin-bottom:4px;}
+  .premium-result .pr-amount{font-family:'DM Serif Display',serif;font-size:28px;color:var(--gold-light);}
+  .premium-result .pr-breakdown{font-size:12px;color:rgba(255,255,255,.6);margin-top:6px;line-height:1.7;}
+  .covid-toggle{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;margin-top:8px;transition:all .2s;}
+  .covid-toggle.checked{border-color:#16a34a;background:#f0fdf4;}
+  .covid-toggle input{width:17px;height:17px;accent-color:#16a34a;flex-shrink:0;}
+  .t-generate-btn{width:100%;background:var(--navy);color:var(--gold-light);border:none;border-radius:10px;padding:14px;font-family:'DM Serif Display',serif;font-size:15px;cursor:pointer;margin-top:8px;}
+  .t-generate-btn:hover{background:#1a3560;}
 </style>
 </head>
 <body>
@@ -139,6 +164,7 @@
   <button class="tab-btn" onclick="showView('preview')">📄 预览报价单</button>
   <button class="tab-btn" onclick="showView('records');loadRecords()">📋 记录</button>
   <button class="tab-btn" onclick="showView('summary')">📝 文字摘要</button>
+  <button class="tab-btn" onclick="showView('travel')">✈️ 旅游保险</button>
   <button class="tab-btn" onclick="location.reload()" style="color:#f87171" title="重新开始">🔄 新报价</button>
 </div>
 
@@ -301,7 +327,7 @@ function showView(v) {
   document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
   document.getElementById('view-' + v).classList.add('active');
-  const idx = {form:0, preview:1, records:2, summary:3}[v];
+  const idx = {form:0, preview:1, records:2, summary:3, travel:4}[v];
   document.querySelectorAll('.tab-btn')[idx].classList.add('active');
 }
 
@@ -682,6 +708,454 @@ function copySummary() {
     setTimeout(() => document.getElementById('copy-status').textContent = '', 2500);
   });
 }
+
+// ════════════════════════════════════════
+// TRAVEL INSURANCE MODULE
+// ════════════════════════════════════════
+
+// ── Zurich Z-Travel Premium Tables (RM) ──
+// Structure: [individual, ind_spouse, family, senior]
+const ZURICH_RATES = {
+  zurich: {
+    area1: {
+      silver:  {d1_5:[45,85,113,81],   d6_10:[56,104,138,101],  d11_15:[95,175,232,171],  d16_20:[124,228,302,224],  extra_week:[24,42,57,42],   annual:[300,null,539,345]},
+      gold:    {d1_5:[52,97,128,93],   d6_10:[65,121,161,114],  d11_15:[111,207,278,193], d16_20:[146,271,365,251],  extra_week:[28,51,70,47],   annual:[345,null,622,489]},
+      diamond: {d1_5:[80,151,200,143], d6_10:[99,187,247,177],  d11_15:[169,320,419,302], d16_20:[222,419,547,396],  extra_week:[42,80,103,76],  annual:[489,null,877,null]},
+      covid: {
+        silver:  {d1_5:[9,17,23,16],   d6_10:[12,22,29,22],  d11_15:[18,32,43,32],  d16_20:[23,41,55,41],  extra_week:[7,12,16,12],   annual:[59,null,105,98]},
+        gold:    {d1_5:[15,28,37,27],  d6_10:[20,37,49,35],  d11_15:[29,55,73,51],  d16_20:[38,70,94,64],  extra_week:[11,20,28,19],  annual:[98,null,176,137]},
+        diamond: {d1_5:[21,40,53,38],  d6_10:[28,53,70,50],  d11_15:[41,78,102,73], d16_20:[53,99,129,94], extra_week:[16,30,39,29],  annual:[137,null,245,null]},
+      }
+    },
+    area2: {
+      silver:  {d1_5:[63,118,156,113], d6_10:[77,146,192,141],  d11_15:[132,248,326,242], d16_20:[173,323,425,317],  extra_week:[34,61,80,61],   annual:[406,null,728,483]},
+      gold:    {d1_5:[73,136,180,130], d6_10:[89,168,223,163],  d11_15:[152,286,379,279], d16_20:[198,374,496,366],  extra_week:[38,70,93,70],   annual:[483,null,866,683]},
+      diamond: {d1_5:[112,211,278,201],d6_10:[140,263,344,250], d11_15:[240,449,587,429], d16_20:[316,589,768,564],  extra_week:[61,112,145,108], annual:[683,null,1227,null]},
+      covid: {
+        silver:  {d1_5:[16,30,40,29],  d6_10:[22,41,54,39],  d11_15:[32,59,78,58],  d16_20:[41,76,99,74],  extra_week:[12,22,29,22],  annual:[105,null,189,158]},
+        gold:    {d1_5:[24,45,60,43],  d6_10:[32,61,81,59],  d11_15:[47,89,118,87], d16_20:[61,115,152,112],extra_week:[18,34,45,34],  annual:[158,null,283,211]},
+        diamond: {d1_5:[32,61,80,58],  d6_10:[43,81,106,77], d11_15:[63,118,155,113],d16_20:[81,151,197,145],extra_week:[24,45,58,43],  annual:[211,null,378,null]},
+      }
+    },
+    area3: {
+      silver:  {d1_5:[82,155,205,147], d6_10:[101,191,255,182], d11_15:[172,324,434,307], d16_20:[225,423,568,400],  extra_week:[42,80,108,76],  annual:[483,null,866,622]},
+      gold:    {d1_5:[93,175,232,167], d6_10:[117,219,288,208], d11_15:[203,375,491,356], d16_20:[267,491,643,466],  extra_week:[51,93,122,89],  annual:[622,null,1221,883]},
+      diamond: {d1_5:[144,272,360,260],d6_10:[178,339,445,321], d11_15:[303,581,758,548], d16_20:[397,761,991,717],  extra_week:[76,145,187,135], annual:[883,null,1588,null]},
+      covid: {
+        silver:  {d1_5:[18,34,45,32],  d6_10:[24,45,60,43],  d11_15:[35,66,89,63],  d16_20:[45,85,114,80],  extra_week:[14,26,35,24],  annual:[117,null,210,176]},
+        gold:    {d1_5:[27,51,67,48],  d6_10:[36,67,88,64],  d11_15:[53,97,127,92], d16_20:[68,124,163,118],extra_week:[20,37,48,35],  annual:[176,null,345,234]},
+        diamond: {d1_5:[36,68,90,65],  d6_10:[48,91,120,86], d11_15:[70,135,176,127],d16_20:[90,173,225,163],extra_week:[27,52,66,48],  annual:[234,null,421,null]},
+      }
+    }
+  }
+};
+
+const COVER_IDX = {individual:0, spouse:1, family:2, senior:3};
+const COVER_LABEL = {individual:'Individual（个人）', spouse:'Individual & Spouse（个人+配偶）', family:'Family（家庭）', senior:'Senior（年长者）'};
+const PLAN_LABEL = {silver:'Silver（银装）', gold:'Gold（金装）', diamond:'Diamond（钻石）'};
+const AREA_LABEL = {area1:'Area 1（亚太区）', area2:'Area 2（全球除美加）', area3:'Area 3（全球）'};
+
+let tInsurer = 'zurich';
+let tPlan = 'silver';
+let tArea = 'area1';
+let tCover = 'individual';
+let tCovidOn = false;
+
+function selectTInsurer(el, key) {
+  document.querySelectorAll('.ins-card').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+  tInsurer = key;
+  calcTravelPremium();
+}
+function selectTPlan(el, key) {
+  document.querySelectorAll('.plan-pill').forEach(p => p.classList.remove('selected'));
+  el.classList.add('selected');
+  tPlan = key;
+  calcTravelPremium();
+}
+function selectTArea(el, key) {
+  document.querySelectorAll('.area-pill').forEach(p => p.classList.remove('selected'));
+  el.classList.add('selected');
+  tArea = key;
+  calcTravelPremium();
+}
+function selectTCover(el, key) {
+  document.querySelectorAll('.cover-pill').forEach(p => p.classList.remove('selected'));
+  el.classList.add('selected');
+  tCover = key;
+  calcTravelPremium();
+}
+function toggleCovid(row) {
+  const cb = document.getElementById('t_covid');
+  if (event && event.target === cb) {
+    tCovidOn = cb.checked;
+  } else {
+    cb.checked = !cb.checked;
+    tCovidOn = cb.checked;
+  }
+  row.classList.toggle('checked', tCovidOn);
+  calcTravelPremium();
+}
+
+function calcTravelDays() {
+  const dep = document.getElementById('t_depart').value;
+  const ret = document.getElementById('t_return').value;
+  const disp = document.getElementById('t-days-display');
+  if (!dep || !ret) { disp.style.display='none'; calcTravelPremium(); return; }
+  const d1 = new Date(dep), d2 = new Date(ret);
+  const days = Math.round((d2-d1)/(1000*60*60*24)) + 1;
+  if (days < 1) { disp.style.display='block'; disp.style.color='#dc2626'; disp.textContent='⚠️ 回程日期不能早于出发日期'; calcTravelPremium(); return; }
+  disp.style.display='block'; disp.style.color='#16a34a';
+  disp.textContent = '✅ 旅游天数：' + days + ' 天';
+  calcTravelPremium();
+}
+
+function getTravelDays() {
+  const dep = document.getElementById('t_depart').value;
+  const ret = document.getElementById('t_return').value;
+  if (!dep || !ret) return null;
+  const days = Math.round((new Date(ret)-new Date(dep))/(1000*60*60*24)) + 1;
+  return days >= 1 ? days : null;
+}
+
+function getDayBucket(days) {
+  if (days <= 5)  return {key:'d1_5', label:'1-5 天'};
+  if (days <= 10) return {key:'d6_10', label:'6-10 天'};
+  if (days <= 15) return {key:'d11_15', label:'11-15 天'};
+  if (days <= 20) return {key:'d16_20', label:'16-20 天'};
+  // Over 20: 16-20 base + extra weeks
+  const extraDays = days - 20;
+  const extraWeeks = Math.ceil(extraDays / 7);
+  return {key:'extra', extraWeeks, label: '20天 + ' + extraWeeks + ' 额外周'};
+}
+
+function calcTravelPremium() {
+  const errEl = document.getElementById('t-premium-error');
+  const resEl = document.getElementById('t-premium-result');
+  errEl.style.display='none';
+  resEl.style.display='none';
+
+  const days = getTravelDays();
+  if (!days) return;
+  if (tInsurer === 'other') {
+    errEl.textContent='其他保险公司暂未支持自动计算，请手动填写。';
+    errEl.style.display='block'; return;
+  }
+
+  const areaRates = ZURICH_RATES.zurich[tArea];
+  const planRates = areaRates[tPlan];
+  const cIdx = COVER_IDX[tCover];
+
+  // Check senior annual restriction
+  const bucket = getDayBucket(days);
+  let basePremium = 0, breakdown = '';
+
+  if (bucket.key === 'extra') {
+    const base20 = planRates.d16_20[cIdx];
+    const weekly = planRates.extra_week[cIdx];
+    if (base20 === null || weekly === null) {
+      errEl.textContent='此组合暂无保费资料，请联络 Zurich 确认。'; errEl.style.display='block'; return;
+    }
+    basePremium = base20 + (bucket.extraWeeks * weekly);
+    breakdown = '16-20天基础: RM'+base20+' + '+bucket.extraWeeks+'周 × RM'+weekly;
+  } else {
+    const rate = planRates[bucket.key][cIdx];
+    if (rate === null) {
+      errEl.textContent='此组合暂无保费资料（例如Individual & Spouse年度计划不适用）。'; errEl.style.display='block'; return;
+    }
+    basePremium = rate;
+    breakdown = bucket.label + ' 基础保费';
+  }
+
+  let covidPremium = 0;
+  if (tCovidOn) {
+    const covidRates = areaRates.covid[tPlan];
+    if (bucket.key === 'extra') {
+      const cb20 = covidRates.d16_20[cIdx];
+      const cw = covidRates.extra_week[cIdx];
+      covidPremium = cb20 + (bucket.extraWeeks * cw);
+      breakdown += ' | Covid附加: RM'+cb20+'+'+bucket.extraWeeks+'×RM'+cw;
+    } else {
+      const cr = covidRates[bucket.key][cIdx];
+      covidPremium = cr !== null ? cr : 0;
+      if (cr !== null) breakdown += ' | Covid附加: RM'+cr;
+    }
+  }
+
+  const total = basePremium + covidPremium;
+  document.getElementById('t-premium-amount').textContent = 'RM ' + total.toFixed(2);
+  document.getElementById('t-premium-breakdown').innerHTML =
+    breakdown + '<br>计划: ' + PLAN_LABEL[tPlan] + ' | ' + AREA_LABEL[tArea] + ' | ' + COVER_LABEL[tCover] +
+    (tCovidOn ? '<br>✅ 含Covid-19附加保障' : '');
+  resEl.style.display='block';
+  return total;
+}
+
+function generateTravelQuote() {
+  const name   = document.getElementById('t_name').value.trim() || '—';
+  const contact= document.getElementById('t_contact').value.trim() || '—';
+  const dep    = document.getElementById('t_depart').value;
+  const ret    = document.getElementById('t_return').value;
+  const dest   = document.getElementById('t_destination').value.trim() || '—';
+  const purpose= document.getElementById('t_purpose').value.trim() || 'Leisure';
+  const days   = getTravelDays();
+  if (!days) { alert('请填写出发和回程日期！'); return; }
+  const total  = calcTravelPremium();
+  if (!total) { alert('请确认所有选项后再生成！'); return; }
+
+  const qNo  = getQuotationNo();
+  const today = new Date().toLocaleDateString('zh-MY',{year:'numeric',month:'long',day:'numeric'});
+  const depFmt = dep ? formatDateDisplay(dep) : '—';
+  const retFmt = ret ? formatDateDisplay(ret) : '—';
+  const areaRates = ZURICH_RATES.zurich[tArea];
+  const planRates = areaRates[tPlan];
+  const cIdx = COVER_IDX[tCover];
+  const bucket = getDayBucket(days);
+  let basePremium = 0;
+  if (bucket.key==='extra') {
+    basePremium = planRates.d16_20[cIdx] + bucket.extraWeeks * planRates.extra_week[cIdx];
+  } else {
+    basePremium = planRates[bucket.key][cIdx];
+  }
+  let covidPremium = 0;
+  if (tCovidOn) {
+    const cr = areaRates.covid[tPlan];
+    if (bucket.key==='extra') {
+      covidPremium = cr.d16_20[cIdx] + bucket.extraWeeks * cr.extra_week[cIdx];
+    } else {
+      covidPremium = cr[bucket.key][cIdx] || 0;
+    }
+  }
+
+  // Key benefits per plan
+  const benefits = {
+    silver:  {medical:'RM 300,000', accident:'RM 300,000 (18-85yrs)', cancellation:'RM 20,000', baggage:'RM 5,000'},
+    gold:    {medical:'RM 500,000', accident:'RM 300,000 (18-85yrs)', cancellation:'RM 25,000', baggage:'RM 7,000'},
+    diamond: {medical:'Unlimited（无限额）', accident:'RM 500,000 (18-85yrs)', cancellation:'RM 30,000', baggage:'RM 10,000'},
+  };
+  const b = benefits[tPlan];
+
+  document.getElementById('quote-output').innerHTML = `
+    <div class="quote-header">
+      <div>
+        <div class="quote-company">CGW Risk Management</div>
+        <div class="quote-tagline">Travel Insurance Quotation · 旅游保险报价单</div>
+        <div class="quote-insurer">🏢 Zurich General Insurance — Z-Travel International</div>
+      </div>
+      <div class="quote-header-right">
+        <div class="quote-badge">Travel</div>
+        <div class="quote-no">${qNo}</div>
+      </div>
+    </div>
+    <div class="quote-body">
+      <div class="info-grid">
+        <div class="info-cell"><div class="lbl">Traveller / 旅客</div><div class="val">${name}</div></div>
+        <div class="info-cell"><div class="lbl">Contact / 联络</div><div class="val">${contact}</div></div>
+        <div class="info-cell"><div class="lbl">Departure / 出发</div><div class="val">${depFmt}</div></div>
+        <div class="info-cell"><div class="lbl">Return / 回程</div><div class="val">${retFmt}</div></div>
+        <div class="info-cell"><div class="lbl">Duration / 旅游天数</div><div class="val">${days} 天</div></div>
+        <div class="info-cell"><div class="lbl">Destination / 目的地</div><div class="val">${dest}</div></div>
+        <div class="info-cell"><div class="lbl">Plan / 计划</div><div class="val">${PLAN_LABEL[tPlan]}</div></div>
+        <div class="info-cell"><div class="lbl">Area / 地区</div><div class="val">${AREA_LABEL[tArea]}</div></div>
+        <div class="info-cell"><div class="lbl">Cover Type / 保障类型</div><div class="val">${COVER_LABEL[tCover]}</div></div>
+        <div class="info-cell" style="grid-column:2"><div class="lbl">Quotation Date / 报价日期</div><div class="val">${today}</div></div>
+      </div>
+
+      <div class="section-heading">主要保障 Key Benefits</div>
+      <div class="rider-list">
+        <div class="rider-item"><span class="r-name">Overseas Medical Expenses（海外医疗费用）</span><span class="r-amt">${b.medical}</span></div>
+        <div class="rider-item"><span class="r-name">Emergency Medical Evacuation（紧急医疗运送）</span><span class="r-amt">Unlimited</span></div>
+        <div class="rider-item"><span class="r-name">Accidental Death & Disablement（意外身故及全残）</span><span class="r-amt">${b.accident}</span></div>
+        <div class="rider-item"><span class="r-name">Travel Cancellation（旅程取消）</span><span class="r-amt">${b.cancellation}</span></div>
+        <div class="rider-item"><span class="r-name">Baggage & Personal Effects（行李及随身财产）</span><span class="r-amt">${b.baggage}</span></div>
+        <div class="rider-item"><span class="r-name">Personal Liability（个人责任）</span><span class="r-amt">RM 1,000,000</span></div>
+        ${tCovidOn ? '<div class="rider-item"><span class="r-name">✅ Covid-19 附加保障（选择性）</span><span class="r-amt" style="color:#16a34a">已加入</span></div>' : ''}
+      </div>
+
+      <div class="section-heading">费用明细 Pricing</div>
+      <div class="price-table">
+        <div class="price-line"><span>Travel Insurance Premium（旅游保险保费）</span><span>RM ${basePremium.toFixed(2)}</span></div>
+        ${tCovidOn ? `<div class="price-line"><span>Covid-19 Add-on Premium（附加保费）</span><span>RM ${covidPremium.toFixed(2)}</span></div>` : ''}
+        <div class="price-line total"><span>Total Payable / 总应付款</span><span>RM ${total.toFixed(2)}</span></div>
+      </div>
+
+      <div class="section-heading">付款资料 Payment Details</div>
+      <div class="bank-box">
+        <div><div class="b-label">Bank / 银行</div><div class="b-bank">Maybank</div><div class="b-type">Current Account（活期户口）</div></div>
+        <div class="b-acc-wrap"><div class="b-acc-lbl">Account No. / 账号</div><div class="b-acc">5013 0170 7441</div><div class="b-name">CGW Risk Management</div></div>
+      </div>
+      <div style="margin-top:16px;background:#fffbea;border:1.5px solid #f0d98c;border-radius:10px;padding:14px 18px;font-size:13px;line-height:1.9;color:#5a4500;">
+        📋 转账后请 send 给我 <strong>payment receipt</strong>，谢谢！
+      </div>
+    </div>
+    <div style="padding:12px 36px;font-size:11px;color:#999;text-align:center;border-top:1px dashed var(--border);">
+      ⚠️ 免责声明：如有失误，一切资讯皆以公司 Quotation 为准。保障细节请参阅正式保单。
+    </div>
+    <div class="quote-footer">此报价单由 CGW Risk Management 发出 · 如有疑问请联络您的代理员 · This quotation is computer-generated.</div>
+  `;
+
+  // Build travel text summary
+  const sumLines = [
+    '你好！😊 你的旅游保险资讯如下：',
+    '',
+    '━━━━━━━━━━━━━━━━━━━━',
+    '✈️ Zurich Z-Travel Insurance (International)',
+    `旅客：${name}`,
+    `目的地：${dest}`,
+    `出发：${depFmt} | 回程：${retFmt}（${days}天）`,
+    `计划：${PLAN_LABEL[tPlan]} | ${AREA_LABEL[tArea]}`,
+    `保障类型：${COVER_LABEL[tCover]}`,
+    '━━━━━━━━━━━━━━━━━━━━',
+    '',
+    '🛡️ 主要保障：',
+    `✅ 海外医疗费用：${b.medical}`,
+    '✅ 紧急医疗运送：Unlimited（无限额）',
+    `✅ 意外身故及全残：${b.accident}`,
+    `✅ 旅程取消：${b.cancellation}`,
+    `✅ 行李及随身财产：${b.baggage}`,
+    '✅ 个人责任：RM 1,000,000',
+    ...(tCovidOn ? ['✅ Covid-19 附加保障：已加入'] : []),
+    '',
+    '━━━━━━━━━━━━━━━━━━━━',
+    '💰 保费明细：',
+    `旅游保险保费：RM ${basePremium.toFixed(2)}`,
+    ...(tCovidOn ? [`Covid-19附加：RM ${covidPremium.toFixed(2)}`] : []),
+    `💵 Total：RM ${total.toFixed(2)}`,
+    '━━━━━━━━━━━━━━━━━━━━',
+    '',
+    '🏦 请 transfer 至：',
+    'Maybank（Current Account）',
+    'CGW Risk Management',
+    '5013 0170 7441',
+    '',
+    'Transfer 后请 send 给我 payment receipt，谢谢！😊',
+  ];
+  document.getElementById('summary-text').value = sumLines.join('\n');
+
+  showView('preview');
+
+  // Save to sheet
+  saveToSheet({
+    quotationNo: qNo, date: today, owner: name, plate: dest,
+    ncd: COVER_LABEL[tCover], insurer: 'Zurich Z-Travel '+PLAN_LABEL[tPlan],
+    premium: basePremium.toFixed(2), roadtax: covidPremium.toFixed(2),
+    serviceFee: '0', total: total.toFixed(2),
+    riders: 'Travel Insurance' + (tCovidOn?' + Covid-19':''),
+    roadtaxType: AREA_LABEL[tArea]
+  });
+}
+
 </script>
+
+<!-- ═══ TRAVEL INSURANCE VIEW ═══ -->
+<div class="view" id="view-travel">
+<div style="max-width:820px;margin:0 auto">
+
+  <!-- Insurer -->
+  <div class="t-section">
+    <div class="t-section-title">保险公司 Insurer</div>
+    <div class="ins-grid" id="t-insurer-grid">
+      <div class="ins-card selected" onclick="selectTInsurer(this,'zurich')" data-ins="zurich">
+        <div class="ic-name">Zurich General Insurance</div>
+        <div class="ic-sub">Z-Travel Insurance (International)</div>
+      </div>
+      <div class="ins-card" onclick="selectTInsurer(this,'other')" data-ins="other" style="display:flex;align-items:center;justify-content:center;border-style:dashed">
+        <div style="text-align:center;color:var(--gray);font-size:13px">✏️<br>其他（即将推出）</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Traveller Info -->
+  <div class="t-section">
+    <div class="t-section-title">旅客资料 Traveller Info</div>
+    <div class="row">
+      <div class="field">
+        <label>旅客姓名 Name</label>
+        <input type="text" id="t_name" placeholder="e.g. Ahmad bin Abu">
+      </div>
+      <div class="field">
+        <label>联络号码 Contact</label>
+        <input type="text" id="t_contact" placeholder="e.g. 0123456789">
+      </div>
+    </div>
+    <div class="row">
+      <div class="field">
+        <label>出发日期 Departure</label>
+        <input type="date" id="t_depart" onchange="calcTravelDays()" style="background:#fafafa;border:1.5px solid var(--border);border-radius:8px;padding:10px 14px;font-family:'DM Sans',sans-serif;font-size:14px;outline:none;">
+      </div>
+      <div class="field">
+        <label>回程日期 Return</label>
+        <input type="date" id="t_return" onchange="calcTravelDays()" style="background:#fafafa;border:1.5px solid var(--border);border-radius:8px;padding:10px 14px;font-family:'DM Sans',sans-serif;font-size:14px;outline:none;">
+      </div>
+    </div>
+    <div id="t-days-display" style="font-size:13px;color:#16a34a;font-weight:600;margin-top:4px;display:none"></div>
+  </div>
+
+  <!-- Plan Selection -->
+  <div class="t-section">
+    <div class="t-section-title">保险计划 Plan</div>
+    <div style="margin-bottom:14px">
+      <label style="font-size:12px;font-weight:600;color:var(--gray);display:block;margin-bottom:8px">计划 Plan Type</label>
+      <div class="plan-pills">
+        <div class="plan-pill selected" onclick="selectTPlan(this,'silver')">🥈 Silver</div>
+        <div class="plan-pill" onclick="selectTPlan(this,'gold')">🥇 Gold</div>
+        <div class="plan-pill" onclick="selectTPlan(this,'diamond')">💎 Diamond</div>
+      </div>
+    </div>
+    <div style="margin-bottom:14px">
+      <label style="font-size:12px;font-weight:600;color:var(--gray);display:block;margin-bottom:8px">旅游地区 Area</label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <div class="area-pill selected" onclick="selectTArea(this,'area1')">Area 1<div style="font-size:10px;color:var(--gray);margin-top:2px">亚太区</div></div>
+        <div class="area-pill" onclick="selectTArea(this,'area2')">Area 2<div style="font-size:10px;color:var(--gray);margin-top:2px">全球除美加</div></div>
+        <div class="area-pill" onclick="selectTArea(this,'area3')">Area 3<div style="font-size:10px;color:var(--gray);margin-top:2px">全球</div></div>
+      </div>
+    </div>
+    <div>
+      <label style="font-size:12px;font-weight:600;color:var(--gray);display:block;margin-bottom:8px">保障类型 Cover Type</label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <div class="cover-pill selected" onclick="selectTCover(this,'individual')">Individual<div style="font-size:10px;color:var(--gray)">个人</div></div>
+        <div class="cover-pill" onclick="selectTCover(this,'spouse')">Ind & Spouse<div style="font-size:10px;color:var(--gray)">个人+配偶</div></div>
+        <div class="cover-pill" onclick="selectTCover(this,'family')">Family<div style="font-size:10px;color:var(--gray)">家庭</div></div>
+        <div class="cover-pill" onclick="selectTCover(this,'senior')">Senior<div style="font-size:10px;color:var(--gray)">年长者71-85岁</div></div>
+      </div>
+    </div>
+
+    <!-- Covid Add-on -->
+    <div class="covid-toggle" id="covid-toggle" onclick="toggleCovid(this)">
+      <input type="checkbox" id="t_covid" onclick="event.stopPropagation()">
+      <div>
+        <div style="font-size:13.5px;font-weight:600">+ Covid-19 附加保障 (Optional)</div>
+        <div style="font-size:11px;color:var(--gray);margin-top:2px">额外保费将自动加入总额</div>
+      </div>
+    </div>
+
+    <!-- Premium Result -->
+    <div class="premium-result" id="t-premium-result" style="display:none">
+      <div class="pr-label">计算保费 Calculated Premium</div>
+      <div class="pr-amount" id="t-premium-amount">RM 0.00</div>
+      <div class="pr-breakdown" id="t-premium-breakdown"></div>
+    </div>
+    <div id="t-premium-error" style="font-size:12px;color:#dc2626;margin-top:8px;display:none"></div>
+  </div>
+
+  <!-- Destination -->
+  <div class="t-section">
+    <div class="t-section-title">旅游资料 Trip Details</div>
+    <div class="row">
+      <div class="field">
+        <label>目的地 Destination</label>
+        <input type="text" id="t_destination" placeholder="e.g. Japan, Tokyo">
+      </div>
+      <div class="field">
+        <label>旅游目的 Purpose</label>
+        <input type="text" id="t_purpose" placeholder="e.g. Leisure / Business">
+      </div>
+    </div>
+  </div>
+
+  <button class="t-generate-btn" onclick="generateTravelQuote()">生成旅游保险报价单 →</button>
+</div>
+</div>
+
 </body>
 </html>
