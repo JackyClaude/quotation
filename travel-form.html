@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CGW Risk Management — 旅游保险询价</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500;600&display=swap');
+  :root{--navy:#0f2340;--gold:#c9a84c;--gold-light:#f0d98c;--gray:#6b7280;--border:#e5e7eb;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'DM Sans',sans-serif;background:#eef0f4;color:#1a1a2e;min-height:100vh;padding-bottom:48px;}
+
+  .header{background:var(--navy);padding:28px 24px 24px;text-align:center;}
+  .header .brand{font-family:'DM Serif Display',serif;color:var(--gold);font-size:22px;letter-spacing:.5px;margin-bottom:6px;}
+  .header .tagline{color:rgba(255,255,255,.55);font-size:13px;}
+  .header .badge{display:inline-block;margin-top:12px;background:var(--gold);color:var(--navy);font-size:11px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;padding:5px 14px;border-radius:20px;}
+
+  .container{max-width:580px;margin:0 auto;padding:24px 16px 0;}
+
+  .card{background:#fff;border-radius:14px;padding:22px 22px;margin-bottom:14px;border:1px solid var(--border);box-shadow:0 2px 12px rgba(0,0,0,.05);}
+  .card-title{font-size:11px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--gold);margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+
+  .field{margin-bottom:13px;}
+  .field:last-child{margin-bottom:0;}
+  label{display:block;font-size:12px;font-weight:600;color:var(--gray);margin-bottom:5px;letter-spacing:.3px;}
+  input[type=text],input[type=tel],input[type=date],textarea,select{width:100%;border:1.5px solid var(--border);border-radius:10px;padding:11px 13px;font-family:'DM Sans',sans-serif;font-size:14px;background:#fafafa;outline:none;transition:border .2s;color:#1a1a2e;}
+  input:focus,textarea:focus,select:focus{border-color:var(--navy);background:#fff;}
+  textarea{resize:vertical;min-height:70px;}
+  .row{display:flex;gap:10px;}
+  .row .field{flex:1;min-width:0;}
+
+  /* cover type pills */
+  .cover-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .cover-card{border:1.5px solid var(--border);border-radius:10px;padding:12px 14px;cursor:pointer;background:#fafafa;transition:all .2s;user-select:none;}
+  .cover-card.selected{border-color:var(--navy);background:#f0f4ff;}
+  .cover-card .cc-title{font-size:13px;font-weight:600;color:var(--navy);}
+  .cover-card .cc-sub{font-size:11px;color:var(--gray);margin-top:3px;line-height:1.4;}
+
+  /* traveller cards */
+  .traveller-card{border:1.5px solid var(--border);border-radius:12px;padding:16px 16px;margin-bottom:10px;background:#fafafa;}
+  .traveller-card:last-child{margin-bottom:0;}
+  .tc-header{display:flex;align-items:center;gap:8px;margin-bottom:14px;}
+  .tc-num{background:var(--navy);color:#fff;width:24px;height:24px;border-radius:50%;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .tc-label{font-size:13px;font-weight:600;color:var(--navy);}
+  .tc-type{font-size:11px;color:var(--gray);margin-left:auto;background:#e5e7eb;border-radius:10px;padding:2px 10px;}
+
+  /* days pill */
+  .days-pill{display:inline-block;background:#f0fdf4;border:1px solid #86efac;border-radius:20px;padding:4px 14px;font-size:12.5px;font-weight:600;color:#15803d;margin-top:8px;}
+  .days-pill.error{background:#fef2f2;border-color:#fca5a5;color:#dc2626;}
+
+  /* submit */
+  .submit-btn{width:100%;background:var(--navy);color:var(--gold-light);border:none;border-radius:12px;padding:16px;font-family:'DM Serif Display',serif;font-size:17px;letter-spacing:.5px;cursor:pointer;transition:background .2s;margin-top:4px;}
+  .submit-btn:hover{background:#1a3560;}
+  .submit-btn:disabled{background:#9ca3af;cursor:not-allowed;}
+
+  /* success */
+  .success-card{background:#fff;border-radius:14px;padding:40px 28px;text-align:center;border:1px solid var(--border);box-shadow:0 2px 12px rgba(0,0,0,.05);display:none;}
+  .success-icon{font-size:52px;margin-bottom:16px;}
+  .success-title{font-family:'DM Serif Display',serif;font-size:22px;color:var(--navy);margin-bottom:10px;}
+  .success-msg{font-size:14px;color:var(--gray);line-height:1.8;}
+  .success-ref{display:inline-block;margin-top:16px;background:#f0f4ff;border:1.5px solid #c7d2fe;border-radius:10px;padding:10px 20px;font-size:13px;color:var(--navy);font-weight:600;}
+
+  .field-error{font-size:11.5px;color:#dc2626;margin-top:4px;display:none;}
+  input.invalid,textarea.invalid{border-color:#dc2626;}
+
+  .footer-note{text-align:center;font-size:11.5px;color:#9ca3af;margin-top:18px;line-height:1.7;}
+
+  .section-note{font-size:12px;color:var(--gray);background:#f8faff;border:1px solid #e0e7ff;border-radius:8px;padding:9px 13px;margin-bottom:14px;line-height:1.6;}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="brand">CGW Risk Management</div>
+  <div class="tagline">Travel Insurance Enquiry · 旅游保险询价</div>
+  <div class="badge">✈️ 填写资料，我们为您报价</div>
+</div>
+
+<div class="container">
+<div id="form-area">
+
+  <!-- Contact Person -->
+  <div class="card">
+    <div class="card-title">联络人资料 Contact Person</div>
+    <div class="row">
+      <div class="field">
+        <label>联络人姓名 Name *</label>
+        <input type="text" id="c_name" placeholder="e.g. Ahmad bin Abu">
+        <div class="field-error" id="err_name">请填写姓名</div>
+      </div>
+      <div class="field">
+        <label>联络号码 Contact No. *</label>
+        <input type="tel" id="c_contact" placeholder="e.g. 0123456789">
+        <div class="field-error" id="err_contact">请填写联络号码</div>
+      </div>
+    </div>
+    <div class="field">
+      <label>电邮 Email（选填）</label>
+      <input type="text" id="c_email" placeholder="e.g. abc@gmail.com">
+    </div>
+  </div>
+
+  <!-- Trip Details -->
+  <div class="card">
+    <div class="card-title">旅程资料 Trip Details</div>
+    <div class="field">
+      <label>目的地 Destination *</label>
+      <input type="text" id="c_dest" placeholder="e.g. Japan / Thailand / Europe">
+      <div class="field-error" id="err_dest">请填写目的地</div>
+    </div>
+    <div class="row">
+      <div class="field">
+        <label>出发日期 Departure *</label>
+        <input type="date" id="c_depart" onchange="calcDays()">
+        <div class="field-error" id="err_depart">请选择出发日期</div>
+      </div>
+      <div class="field">
+        <label>回程日期 Return *</label>
+        <input type="date" id="c_return" onchange="calcDays()">
+        <div class="field-error" id="err_return">请选择回程日期</div>
+      </div>
+    </div>
+    <div id="days-display"></div>
+    <div class="field" style="margin-top:13px">
+      <label>旅游目的 Purpose</label>
+      <select id="c_purpose">
+        <option value="Leisure">Leisure（休闲旅游）</option>
+        <option value="Business">Business（商务出行）</option>
+        <option value="Leisure + Business">Leisure + Business</option>
+        <option value="Study">Study（求学）</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Cover Type -->
+  <div class="card">
+    <div class="card-title">保障类型 Cover Type *</div>
+    <div class="section-note">请根据您的情况选择保障类型，选好后下方会出现填写旅客资料的格子。</div>
+    <div class="cover-grid">
+      <div class="cover-card selected" onclick="selectCover(this,'individual')" data-cover="individual">
+        <div class="cc-title">Individual</div>
+        <div class="cc-sub">个人 · 只保障 1 位旅客</div>
+      </div>
+      <div class="cover-card" onclick="selectCover(this,'spouse')" data-cover="spouse">
+        <div class="cc-title">Individual & Spouse</div>
+        <div class="cc-sub">个人 + 配偶 · 共 2 位</div>
+      </div>
+      <div class="cover-card" onclick="selectCover(this,'family')" data-cover="family">
+        <div class="cc-title">Family</div>
+        <div class="cc-sub">家庭 · 主保人 + 配偶 + 小孩</div>
+      </div>
+      <div class="cover-card" onclick="selectCover(this,'senior')" data-cover="senior">
+        <div class="cc-title">Senior</div>
+        <div class="cc-sub">年长者 · 71–85 岁单人保障</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Travellers -->
+  <div class="card" id="travellers-card">
+    <div class="card-title">旅客资料 Travellers Info</div>
+    <div class="section-note" id="travellers-note">请填写每位旅客的姓名、IC 号码及出生日期。</div>
+    <div id="travellers-list"></div>
+
+    <!-- Family: add child button -->
+    <div id="add-child-area" style="display:none;margin-top:10px">
+      <button type="button" onclick="addChild()" style="background:none;border:1.5px dashed var(--border);border-radius:8px;padding:9px 16px;font-size:13px;color:var(--gray);cursor:pointer;width:100%;transition:all .2s" onmouseover="this.style.borderColor='var(--navy)';this.style.color='var(--navy)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--gray)'">＋ 添加小孩 Add Child</button>
+    </div>
+  </div>
+
+  <!-- Extra Notes -->
+  <div class="card">
+    <div class="card-title">其他补充 Additional Info（选填）</div>
+    <div class="field">
+      <label>特别需求 Special Requests</label>
+      <textarea id="c_notes" placeholder="e.g. 需要包含 Covid-19 附加保障、有参与极限运动等..."></textarea>
+    </div>
+  </div>
+
+  <button class="submit-btn" id="submit-btn" onclick="submitForm()">
+    提交询价 Submit Enquiry →
+  </button>
+
+  <div class="footer-note">
+    提交后，我们的代理员将尽快为您提供报价。<br>
+    如有紧急需求，欢迎直接 WhatsApp 联络我们。
+  </div>
+</div>
+
+<!-- SUCCESS -->
+<div class="success-card" id="success-card">
+  <div class="success-icon">✅</div>
+  <div class="success-title">询价已成功提交！</div>
+  <div class="success-msg">
+    谢谢您的询价！<br>
+    我们的代理员将尽快查阅您的资料并为您提供旅游保险报价。<br><br>
+    如有紧急需求，欢迎直接 WhatsApp 联络我们。
+  </div>
+  <div class="success-ref" id="success-ref">参考编号：—</div>
+</div>
+
+</div><!-- container -->
+
+<script>
+const SHEET_URL = 'https://script.google.com/macros/s/AKfycbwQudTIK1WcI-6T9GE37rea13GNoxI104J9TD1YvQGI1dYkHqHX7kdT9MRnvanYGYBgSQ/exec';
+
+let coverType = 'individual';
+let childCount = 0;
+
+// ── Cover Type ──
+function selectCover(el, type) {
+  document.querySelectorAll('.cover-card').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+  coverType = type;
+  buildTravellers();
+}
+
+// ── Build traveller fields ──
+function buildTravellers() {
+  const list = document.getElementById('travellers-list');
+  const addChildArea = document.getElementById('add-child-area');
+  const note = document.getElementById('travellers-note');
+  childCount = 0;
+  list.innerHTML = '';
+
+  if (coverType === 'individual') {
+    note.textContent = '请填写旅客的姓名、IC 号码及出生日期。';
+    addTravellerRow(list, 1, 'Insured Person（被保人）');
+    addChildArea.style.display = 'none';
+  } else if (coverType === 'spouse') {
+    note.textContent = '请填写两位旅客的姓名、IC 号码及出生日期。';
+    addTravellerRow(list, 1, 'Insured Person（被保人）');
+    addTravellerRow(list, 2, 'Spouse（配偶）');
+    addChildArea.style.display = 'none';
+  } else if (coverType === 'family') {
+    note.textContent = '请填写主保人及配偶资料，然后逐一添加小孩。';
+    addTravellerRow(list, 1, 'Insured Person（被保人）');
+    addTravellerRow(list, 2, 'Spouse（配偶）');
+    addChildArea.style.display = 'block';
+  } else if (coverType === 'senior') {
+    note.textContent = '请填写年长者（71–85岁）的姓名、IC 号码及出生日期。';
+    addTravellerRow(list, 1, 'Senior Insured Person（年长被保人）');
+    addChildArea.style.display = 'none';
+  }
+}
+
+function addTravellerRow(container, num, label, removable = false, id = null) {
+  const div = document.createElement('div');
+  div.className = 'traveller-card';
+  if (id) div.id = id;
+  div.innerHTML = `
+    <div class="tc-header">
+      <div class="tc-num">${num}</div>
+      <div class="tc-label">${label}</div>
+      ${removable ? `<button type="button" onclick="removeChild('${id || ''}')" style="margin-left:auto;background:none;border:1.5px solid #fca5a5;border-radius:6px;color:#dc2626;font-size:13px;padding:3px 10px;cursor:pointer">✕ 移除</button>` : '<span class="tc-type">' + label.split('（')[0] + '</span>'}
+    </div>
+    <div class="row">
+      <div class="field">
+        <label>姓名 Full Name *</label>
+        <input type="text" class="t-name" placeholder="e.g. Ahmad bin Abu">
+      </div>
+      <div class="field">
+        <label>IC / Passport No. *</label>
+        <input type="text" class="t-ic" placeholder="e.g. 901231-14-1234">
+      </div>
+    </div>
+    <div class="field">
+      <label>出生日期 Date of Birth *</label>
+      <input type="date" class="t-dob">
+    </div>
+  `;
+  container.appendChild(div);
+}
+
+function addChild() {
+  childCount++;
+  const list = document.getElementById('travellers-list');
+  const existing = list.querySelectorAll('.traveller-card').length;
+  const childId = 'child_' + childCount;
+  addTravellerRow(list, existing + 1, 'Child ' + childCount + '（小孩 ' + childCount + '）', true, childId);
+}
+
+function removeChild(id) {
+  const el = document.getElementById(id);
+  if (el) el.remove();
+  // Re-number remaining cards
+  const cards = document.querySelectorAll('#travellers-list .traveller-card');
+  cards.forEach((c, i) => {
+    const numEl = c.querySelector('.tc-num');
+    if (numEl) numEl.textContent = i + 1;
+  });
+}
+
+// ── Date helpers ──
+function calcDays() {
+  const dep = document.getElementById('c_depart').value;
+  const ret = document.getElementById('c_return').value;
+  const disp = document.getElementById('days-display');
+  if (!dep || !ret) { disp.innerHTML = ''; return; }
+  const days = Math.round((new Date(ret) - new Date(dep)) / (1000*60*60*24)) + 1;
+  if (days < 1) {
+    disp.innerHTML = '<div class="days-pill error">⚠️ 回程日期不能早于出发日期</div>';
+  } else {
+    disp.innerHTML = '<div class="days-pill">✈️ 旅游天数：' + days + ' 天</div>';
+  }
+}
+
+function formatDate(str) {
+  if (!str) return '—';
+  const [y,m,d] = str.split('-');
+  return d+'/'+m+'/'+y;
+}
+
+function genRef() {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth()+1).padStart(2,'0');
+  const d = String(now.getDate()).padStart(2,'0');
+  return 'ENQ' + y + m + d + String(Math.floor(Math.random()*900)+100);
+}
+
+// ── Validate ──
+function validate() {
+  let ok = true;
+  [{id:'c_name',err:'err_name'},{id:'c_contact',err:'err_contact'},{id:'c_dest',err:'err_dest'},{id:'c_depart',err:'err_depart'},{id:'c_return',err:'err_return'}]
+    .forEach(f => {
+      const el = document.getElementById(f.id);
+      const errEl = document.getElementById(f.err);
+      if (!el.value.trim()) { el.classList.add('invalid'); errEl.style.display='block'; ok=false; }
+      else { el.classList.remove('invalid'); errEl.style.display='none'; }
+    });
+  const dep = document.getElementById('c_depart').value;
+  const ret = document.getElementById('c_return').value;
+  if (dep && ret && Math.round((new Date(ret)-new Date(dep))/(1000*60*60*24))+1 < 1) {
+    document.getElementById('c_return').classList.add('invalid');
+    document.getElementById('err_return').textContent='回程日期不能早于出发日期';
+    document.getElementById('err_return').style.display='block'; ok=false;
+  }
+  // Validate traveller fields
+  document.querySelectorAll('#travellers-list .traveller-card').forEach(card => {
+    const nameEl = card.querySelector('.t-name');
+    const icEl   = card.querySelector('.t-ic');
+    const dobEl  = card.querySelector('.t-dob');
+    if (!nameEl.value.trim()) { nameEl.classList.add('invalid'); ok=false; } else nameEl.classList.remove('invalid');
+    if (!icEl.value.trim())   { icEl.classList.add('invalid');   ok=false; } else icEl.classList.remove('invalid');
+    if (!dobEl.value)         { dobEl.classList.add('invalid');  ok=false; } else dobEl.classList.remove('invalid');
+  });
+  if (!ok) window.scrollTo({top:0,behavior:'smooth'});
+  return ok;
+}
+
+// ── Collect traveller data ──
+function collectTravellers() {
+  const result = [];
+  document.querySelectorAll('#travellers-list .traveller-card').forEach((card, i) => {
+    const label = card.querySelector('.tc-label')?.textContent || ('旅客 '+(i+1));
+    const name  = card.querySelector('.t-name')?.value.trim() || '—';
+    const ic    = card.querySelector('.t-ic')?.value.trim()   || '—';
+    const dob   = card.querySelector('.t-dob')?.value         || '';
+    result.push(`[${label}] ${name} | IC: ${ic} | DOB: ${formatDate(dob)}`);
+  });
+  return result.join('\n');
+}
+
+// ── Submit ──
+function submitForm() {
+  if (!validate()) return;
+  const btn = document.getElementById('submit-btn');
+  btn.disabled = true; btn.textContent = '⏳ 提交中...';
+
+  const dep   = document.getElementById('c_depart').value;
+  const ret   = document.getElementById('c_return').value;
+  const days  = Math.round((new Date(ret)-new Date(dep))/(1000*60*60*24))+1;
+  const ref   = genRef();
+  const today = new Date().toLocaleDateString('zh-MY',{year:'numeric',month:'long',day:'numeric'});
+  const coverLabel = {individual:'Individual（个人）',spouse:'Individual & Spouse（个人+配偶）',family:'Family（家庭）',senior:'Senior（年长者）'}[coverType];
+  const travellersSummary = collectTravellers();
+  const notes = document.getElementById('c_notes').value.trim();
+
+  const data = {
+    quotationNo: ref,
+    date: today,
+    owner: document.getElementById('c_name').value.trim(),
+    plate: document.getElementById('c_dest').value.trim(),
+    ncd: coverLabel,
+    insurer: '【旅游询价】待处理',
+    premium: '—',
+    roadtax: '—',
+    serviceFee: '0',
+    total: '—',
+    riders: [
+      '出发: '+formatDate(dep)+' | 回程: '+formatDate(ret)+' | 天数: '+days+'天',
+      '目的: '+document.getElementById('c_purpose').value,
+      '联络: '+document.getElementById('c_contact').value.trim(),
+      document.getElementById('c_email').value.trim() ? 'Email: '+document.getElementById('c_email').value.trim() : '',
+      '---旅客资料---',
+      travellersSummary,
+      notes ? '备注: '+notes : '',
+    ].filter(Boolean).join(' | '),
+    roadtaxType: '旅游保险询价 Travel Enquiry',
+  };
+
+  fetch(SHEET_URL, {
+    method:'POST', mode:'no-cors',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(data)
+  }).then(() => {
+    document.getElementById('form-area').style.display='none';
+    document.getElementById('success-card').style.display='block';
+    document.getElementById('success-ref').textContent = '参考编号：'+ref;
+  }).catch(() => {
+    btn.disabled=false; btn.textContent='提交询价 Submit Enquiry →';
+    alert('提交失败，请检查网络后再试。');
+  });
+}
+
+// Init
+buildTravellers();
+</script>
+</body>
+</html>
