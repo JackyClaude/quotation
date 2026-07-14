@@ -251,6 +251,7 @@
     <div class="rider-row" onclick="toggleRider(this,event)"><input type="checkbox" data-key="wce"><span class="rider-label">Waiver of Compulsory Excess（豁免强制性超额自付）</span><span class="rider-amt-label"></span><span style="width:130px"></span></div>
     <div class="rider-row" onclick="toggleRider(this,event)"><input type="checkbox" data-key="srcc"><span class="rider-label">Strike, Riot & Civil Commotion（罢工、暴动及内乱）</span><span class="rider-amt-label"></span><span style="width:130px"></span></div>
     <div class="rider-row" onclick="toggleRider(this,event)"><input type="checkbox" data-key="tow"><span class="rider-label">24-Hour Unlimited Towing（24小时无限拖车服务）</span><span class="rider-amt-label"></span><span style="width:130px"></span></div>
+    <div class="rider-row" onclick="toggleRider(this,event)"><input type="checkbox" data-key="ace"><span class="rider-label">All Claim Excess（如发生 claim 需自付）</span><span class="rider-amt-label">金额 RM</span><input class="rider-amt" type="number" placeholder="0.00" onclick="event.stopPropagation()" data-amt="ace"></div>
     <div style="margin-top:16px;padding-top:14px;border-top:1px dashed var(--border);">
       <div style="font-size:11px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;color:var(--gray);margin-bottom:10px;">手动添加 Custom Riders</div>
       <div id="custom-riders-list"></div>
@@ -600,6 +601,7 @@ function generateQuote() {
     wce:        ()    => '✅ All Driver',
     srcc:       ()    => '✅ Strike, Riot & Civil Commotion',
     tow:        ()    => '✅ 24-Hour Unlimited Towing',
+    ace:        (amt) => '⚠️ All Claim Excess' + (amt ? ': RM' + amt : ''),
   };
   document.querySelectorAll('.rider-row').forEach(row => {
     const cb = row.querySelector('input[type=checkbox]');
@@ -646,7 +648,16 @@ function generateQuote() {
 
   // Save to Google Sheet
   const ridersSummary = allRiders.map(r=>r.amt?`${r.label}(${r.amt})`:r.label).join(', ') || '无';
-  saveToSheet({ quotationNo:qNo, date:today, owner:name, plate, ncd:ncd?ncd+'%':'—', insurer:insurer||'—', premium:premium.toFixed(2), roadtax:roadtax.toFixed(2), serviceFee:svc.toFixed(2), total:total.toFixed(2), riders:ridersSummary, roadtaxType:delivery?'Roadtax Delivery':'Digital Roadtax' });
+  const summaryForSheet = document.getElementById('summary-text').value;
+  saveToSheet({ quotationNo:qNo, date:today, owner:name, plate, ncd:ncd?ncd+'%':'—', insurer:insurer||'—', premium:premium.toFixed(2), roadtax:roadtax.toFixed(2), serviceFee:svc.toFixed(2), total:total.toFixed(2), riders:ridersSummary, roadtaxType:delivery?'Roadtax Delivery':'Digital Roadtax', summaryText:summaryForSheet,
+    // Edit-restore fields
+    _restore: JSON.stringify({
+      name, plate, ncd, sumInsured, startDate, endDate, period, premium, roadtax, svc, delivery,
+      insurer: getInsurer(), vehicleValueType,
+      riders: (()=>{ const r={}; document.querySelectorAll('.rider-row').forEach(row=>{ const cb=row.querySelector('input[type=checkbox]'); if(cb){ r[cb.dataset.key]={checked:cb.checked,amt:row.querySelector('.rider-amt')?row.querySelector('.rider-amt').value:''}; } }); return r; })(),
+      customRiders: getCustomRiders(),
+    })
+  });
 }
 
 // ── SAVE TO SHEET ──
@@ -686,27 +697,151 @@ function renderRecords(records) {
     document.getElementById('records-container').innerHTML = '<div class="empty-state">📭 暂无记录</div>';
     return;
   }
-  let html = `<div style="overflow-x:auto"><table class="record-table">
-    <thead><tr>
-      <th>Quotation No</th><th>日期</th><th>车主</th><th>车牌</th><th>NCD</th><th>保险公司</th><th>总额</th><th>Roadtax 方式</th>
-    </tr></thead><tbody>`;
-  records.forEach(r=>{
-    const row = Array.isArray(r) ? r : Object.values(r);
-    // columns: QuotationNo, 日期, 车主, 车牌, NCD, 保险公司, 保费, 路税, 服务费, 总额, Riders, RoadtaxType
-    html += `<tr>
-      <td class="rec-no">${row[0]||'—'}</td>
-      <td>${row[1]||'—'}</td>
-      <td>${row[2]||'—'}</td>
-      <td>${row[3]||'—'}</td>
-      <td>${row[4]||'—'}</td>
-      <td style="max-width:160px;white-space:normal">${row[5]||'—'}</td>
-      <td class="rec-total">${row[9]?'RM '+parseFloat(row[9]).toFixed(2):'—'}</td>
-      <td>${row[11]||'—'}</td>
-    </tr>`;
+  let html = '';
+  records.forEach(function(r, idx) {
+    const row     = Array.isArray(r) ? r : Object.values(r);
+    const qNo     = (row[0]||'—').toString();
+    const date    = (row[1]||'—').toString();
+    const owner   = (row[2]||'—').toString();
+    const plate   = (row[3]||'—').toString();
+    const ncd     = (row[4]||'—').toString();
+    const insurer = (row[5]||'—').toString();
+    const total   = row[9] ? 'RM '+parseFloat(row[9]).toFixed(2) : '—';
+    const rtType  = (row[11]||'—').toString();
+    const summary = (row[12]||'').toString();
+    const restore = (row[13]||'').toString();
+    const isMI    = qNo.startsWith('MI');
+
+    // Store restore data in a global map to avoid inline JSON escaping issues
+    if (restore) window._restoreMap = window._restoreMap || {};
+    if (restore) window._restoreMap['rec_'+idx] = restore;
+
+    let editBtn = '';
+    if (isMI && restore) {
+      editBtn = '<button onclick="restoreQuote('rec_'+idx+'')" style="background:var(--navy);color:var(--gold-light);border:none;border-radius:6px;padding:5px 12px;font-size:12px;cursor:pointer;font-weight:600">✏️ Edit</button>';
+    }
+
+    let summaryHtml = '';
+    if (summary) {
+      const safeSummary = summary.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      summaryHtml = '<div style="padding:0 16px 14px">'
+        + '<div style="font-size:10px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--gray);margin-bottom:6px">📋 文字摘要</div>'
+        + '<textarea id="rec-sum-'+idx+'" readonly onclick="this.select()" style="width:100%;height:120px;border:1.5px solid var(--border);border-radius:8px;padding:10px;font-family:'DM Sans',sans-serif;font-size:12px;line-height:1.7;background:#fafafa;outline:none;resize:vertical;color:#333">'+safeSummary+'</textarea>'
+        + '<button onclick="copyRecordSummary('rec-sum-'+idx+'',this)" style="margin-top:6px;background:var(--gold);color:var(--navy);border:none;border-radius:6px;padding:6px 16px;font-size:12px;font-weight:700;cursor:pointer;width:100%">📋 复制文字摘要</button>'
+        + '</div>';
+    }
+
+    html += '<div style="background:#fff;border:1px solid var(--border);border-radius:12px;margin-bottom:12px;overflow:hidden;">'
+      + '<div style="display:flex;align-items:center;padding:12px 16px;gap:10px;border-bottom:1px solid var(--border);background:#f8faff;flex-wrap:wrap;">'
+      + '<span style="font-weight:700;font-size:13px;color:var(--navy)">'+qNo+'</span>'
+      + '<span style="font-size:12px;color:var(--gray)">'+date+'</span>'
+      + '<span style="font-size:13px;font-weight:600">'+owner+'</span>'
+      + '<span style="font-size:12px;color:var(--gray)">'+plate+'</span>'
+      + '<span style="margin-left:auto;font-weight:700;color:var(--navy)">'+total+'</span>'
+      + editBtn
+      + '</div>'
+      + '<div style="padding:10px 16px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">'
+      + '<span style="font-size:12px;color:var(--gray)">NCD: '+ncd+'</span>'
+      + '<span style="font-size:12px;color:var(--gray)">•</span>'
+      + '<span style="font-size:12px;color:var(--gray)">'+insurer+'</span>'
+      + '<span style="font-size:12px;color:var(--gray)">•</span>'
+      + '<span style="font-size:12px;color:var(--gray)">'+rtType+'</span>'
+      + '</div>'
+      + summaryHtml
+      + '</div>';
   });
-  html += '</tbody></table></div>';
-  html += `<div style="font-size:12px;color:var(--gray);margin-top:10px;text-align:right">共 ${records.length} 笔记录</div>`;
+  html += '<div style="font-size:12px;color:var(--gray);margin-top:4px;text-align:right">共 '+records.length+' 笔记录</div>';
   document.getElementById('records-container').innerHTML = html;
+}
+
+function copyRecordSummary(taId, btn) {
+  const ta = document.getElementById(taId);
+  ta.select();
+  navigator.clipboard.writeText(ta.value).then(()=>{
+    const orig = btn.textContent;
+    btn.textContent='✅ 已复制！';
+    setTimeout(()=>btn.textContent=orig, 2500);
+  }).catch(()=>{ try{document.execCommand('copy');}catch(e){} });
+}
+
+function restoreQuote(mapKey) {
+  const restoreStr = (window._restoreMap||{})[mapKey];
+  if (!restoreStr) { alert('无法读取记录资料，可能是旧版记录。'); return; }
+  let data;
+  try { data = JSON.parse(restoreStr); } catch(e) { alert('无法读取记录资料，可能是旧版记录。'); return; }
+  showView('form');
+  setTimeout(()=>{
+    // Basic fields
+    if(data.name) document.getElementById('f_name').value = data.name;
+    if(data.plate) document.getElementById('f_plate').value = data.plate;
+    if(data.ncd) document.getElementById('f_ncd').value = data.ncd;
+    if(data.sumInsured) document.getElementById('f_suminsured').value = data.sumInsured;
+    if(data.startDate) { document.getElementById('f_startdate').value = data.startDate; updateEndDate(); }
+    if(data.endDate) document.getElementById('f_enddate').value = data.endDate;
+    if(data.premium) document.getElementById('f_premium').value = data.premium;
+    if(data.roadtax) document.getElementById('f_roadtax').value = data.roadtax;
+
+    // Delivery
+    if(data.delivery !== undefined) setDelivery(data.delivery);
+
+    // Vehicle value type
+    if(data.vehicleValueType) setValueType(data.vehicleValueType);
+
+    // Insurer
+    if(data.insurer) {
+      const pills = document.querySelectorAll('.ins-pill');
+      let found = false;
+      pills.forEach(p => {
+        if(p.textContent.trim() === data.insurer) { selectInsurer(p, data.insurer); found = true; }
+      });
+      if(!found) {
+        const customPill = document.querySelector('.ins-pill:last-child');
+        if(customPill) { selectInsurer(customPill,'__custom__'); document.getElementById('insurer-custom').value = data.insurer; }
+      }
+    }
+
+    // Riders
+    if(data.riders) {
+      document.querySelectorAll('.rider-row').forEach(row => {
+        const cb = row.querySelector('input[type=checkbox]');
+        if(!cb) return;
+        const key = cb.dataset.key;
+        const rd = data.riders[key];
+        if(rd) {
+          cb.checked = rd.checked;
+          row.classList.toggle('checked', rd.checked);
+          const amtEl = row.querySelector('.rider-amt');
+          if(amtEl && rd.amt) amtEl.value = rd.amt;
+        }
+      });
+    }
+
+    // Custom riders
+    if(data.customRiders && data.customRiders.length > 0) {
+      document.getElementById('custom-riders-list').innerHTML = '';
+      customRiderCount = 0;
+      data.customRiders.forEach(cr => {
+        addCustomRider();
+        const rows = document.querySelectorAll('#custom-riders-list .custom-rider-row');
+        const lastRow = rows[rows.length-1];
+        if(lastRow) {
+          const nameInput = lastRow.querySelector('input[type=text]');
+          const amtInput  = lastRow.querySelector('input[type=number]');
+          if(nameInput) nameInput.value = cr.label || '';
+          if(amtInput && cr.amt) amtInput.value = parseFloat(cr.amt.replace('RM','').trim()) || '';
+        }
+      });
+    }
+
+    // Scroll to top
+    window.scrollTo({top:0,behavior:'smooth'});
+    // Show a notice
+    const notice = document.createElement('div');
+    notice.style.cssText='position:fixed;top:70px;left:50%;transform:translateX(-50%);background:#16a34a;color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:600;z-index:999;box-shadow:0 4px 12px rgba(0,0,0,.2)';
+    notice.textContent='✅ 已载入记录资料，请检查后重新生成报价单';
+    document.body.appendChild(notice);
+    setTimeout(()=>notice.remove(), 3500);
+  }, 100);
 }
 
 function filterRecords() {
