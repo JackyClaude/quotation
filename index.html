@@ -694,40 +694,38 @@ function loadRecords() {
 
 function renderRecords(records) {
   if (!records.length) {
-    document.getElementById('records-container').innerHTML = '<div class="empty-state">📭 暂无记录</div>';
+    document.getElementById('records-container').innerHTML = '<div class="empty-state">&#128235; 暂无记录</div>';
     return;
   }
+  window._restoreMap = {};
   let html = '';
   records.forEach(function(r, idx) {
     const row     = Array.isArray(r) ? r : Object.values(r);
-    const qNo     = (row[0]||'—').toString();
-    const date    = (row[1]||'—').toString();
-    const owner   = (row[2]||'—').toString();
-    const plate   = (row[3]||'—').toString();
-    const ncd     = (row[4]||'—').toString();
-    const insurer = (row[5]||'—').toString();
+    const qNo     = String(row[0]||'—');
+    const date    = String(row[1]||'—');
+    const owner   = String(row[2]||'—');
+    const plate   = String(row[3]||'—');
+    const ncd     = String(row[4]||'—');
+    const insurer = String(row[5]||'—');
     const total   = row[9] ? 'RM '+parseFloat(row[9]).toFixed(2) : '—';
-    const rtType  = (row[11]||'—').toString();
-    const summary = (row[12]||'').toString();
-    const restore = (row[13]||'').toString();
+    const rtType  = String(row[11]||'—');
+    const summary = String(row[12]||'');
+    const restore = String(row[13]||'');
     const isMI    = qNo.startsWith('MI');
 
-    // Store restore data in a global map to avoid inline JSON escaping issues
-    if (restore) window._restoreMap = window._restoreMap || {};
-    if (restore) window._restoreMap['rec_'+idx] = restore;
+    if (restore) window._restoreMap[idx] = restore;
 
-    let editBtn = '';
-    if (isMI && restore) {
-      editBtn = '<button onclick="restoreQuote('rec_'+idx+'')" style="background:var(--navy);color:var(--gold-light);border:none;border-radius:6px;padding:5px 12px;font-size:12px;cursor:pointer;font-weight:600">✏️ Edit</button>';
-    }
+    const editBtnHtml = (isMI && restore)
+      ? '<button class="rec-edit-btn" data-idx="'+idx+'" style="background:var(--navy);color:var(--gold-light);border:none;border-radius:6px;padding:5px 12px;font-size:12px;cursor:pointer;font-weight:600">&#9999;&#65039; Edit</button>'
+      : '';
 
     let summaryHtml = '';
     if (summary) {
-      const safeSummary = summary.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      const safe = summary.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
       summaryHtml = '<div style="padding:0 16px 14px">'
-        + '<div style="font-size:10px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--gray);margin-bottom:6px">📋 文字摘要</div>'
-        + '<textarea id="rec-sum-'+idx+'" readonly onclick="this.select()" style="width:100%;height:120px;border:1.5px solid var(--border);border-radius:8px;padding:10px;font-family:'DM Sans',sans-serif;font-size:12px;line-height:1.7;background:#fafafa;outline:none;resize:vertical;color:#333">'+safeSummary+'</textarea>'
-        + '<button onclick="copyRecordSummary('rec-sum-'+idx+'',this)" style="margin-top:6px;background:var(--gold);color:var(--navy);border:none;border-radius:6px;padding:6px 16px;font-size:12px;font-weight:700;cursor:pointer;width:100%">📋 复制文字摘要</button>'
+        + '<div style="font-size:10px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--gray);margin-bottom:6px">&#128203; 文字摘要</div>'
+        + '<textarea class="rec-sum-ta" data-idx="'+idx+'" readonly style="width:100%;height:120px;border:1.5px solid var(--border);border-radius:8px;padding:10px;font-family:Arial,sans-serif;font-size:12px;line-height:1.7;background:#fafafa;outline:none;resize:vertical;color:#333">'+safe+'</textarea>'
+        + '<button class="rec-copy-btn" data-idx="'+idx+'" style="margin-top:6px;background:var(--gold);color:var(--navy);border:none;border-radius:6px;padding:6px 16px;font-size:12px;font-weight:700;cursor:pointer;width:100%">&#128203; 复制文字摘要</button>'
         + '</div>';
     }
 
@@ -738,7 +736,7 @@ function renderRecords(records) {
       + '<span style="font-size:13px;font-weight:600">'+owner+'</span>'
       + '<span style="font-size:12px;color:var(--gray)">'+plate+'</span>'
       + '<span style="margin-left:auto;font-weight:700;color:var(--navy)">'+total+'</span>'
-      + editBtn
+      + editBtnHtml
       + '</div>'
       + '<div style="padding:10px 16px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">'
       + '<span style="font-size:12px;color:var(--gray)">NCD: '+ncd+'</span>'
@@ -752,6 +750,27 @@ function renderRecords(records) {
   });
   html += '<div style="font-size:12px;color:var(--gray);margin-top:4px;text-align:right">共 '+records.length+' 笔记录</div>';
   document.getElementById('records-container').innerHTML = html;
+
+  // Attach events after DOM is set
+  document.querySelectorAll('.rec-edit-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      restoreQuote(parseInt(this.dataset.idx));
+    });
+  });
+  document.querySelectorAll('.rec-copy-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      const ta = document.querySelector('.rec-sum-ta[data-idx="'+this.dataset.idx+'"]');
+      if (!ta) return;
+      const b = this;
+      navigator.clipboard.writeText(ta.value).then(function() {
+        b.textContent = '已复制！';
+        setTimeout(function(){ b.textContent = '复制文字摘要'; }, 2500);
+      }).catch(function(){ try{ ta.select(); document.execCommand('copy'); }catch(e){} });
+    });
+  });
+  document.querySelectorAll('.rec-sum-ta').forEach(function(ta) {
+    ta.addEventListener('click', function(){ this.select(); });
+  });
 }
 
 function copyRecordSummary(taId, btn) {
@@ -764,8 +783,8 @@ function copyRecordSummary(taId, btn) {
   }).catch(()=>{ try{document.execCommand('copy');}catch(e){} });
 }
 
-function restoreQuote(mapKey) {
-  const restoreStr = (window._restoreMap||{})[mapKey];
+function restoreQuote(idx) {
+  const restoreStr = (window._restoreMap||{})[idx];
   if (!restoreStr) { alert('无法读取记录资料，可能是旧版记录。'); return; }
   let data;
   try { data = JSON.parse(restoreStr); } catch(e) { alert('无法读取记录资料，可能是旧版记录。'); return; }
