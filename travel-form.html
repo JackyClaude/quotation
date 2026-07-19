@@ -168,6 +168,16 @@
     </div>
   </div>
 
+  <!-- Beneficiary -->
+  <div class="card" id="beneficiary-card">
+    <div class="card-title">受益人资料 Beneficiary Info（选填）</div>
+    <div class="section-note">如您想指定保险受益人，请填写以下资料；如有多位受益人，可点击下方按钮添加。若不需要指定，可略过此部分。</div>
+    <div id="beneficiary-list"></div>
+    <div style="margin-top:10px">
+      <button type="button" onclick="addBeneficiary()" style="background:none;border:1.5px dashed var(--border);border-radius:8px;padding:9px 16px;font-size:13px;color:var(--gray);cursor:pointer;width:100%;transition:all .2s" onmouseover="this.style.borderColor='var(--navy)';this.style.color='var(--navy)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--gray)'">＋ 添加受益人 Add Beneficiary</button>
+    </div>
+  </div>
+
   <!-- Extra Notes -->
   <div class="card">
     <div class="card-title">其他补充 Additional Info（选填）</div>
@@ -206,6 +216,7 @@ const SHEET_URL = 'https://script.google.com/macros/s/AKfycbwQudTIK1WcI-6T9GE37r
 
 let coverType = 'individual';
 let childCount = 0;
+let beneficiaryCount = 0;
 
 // ── Cover Type ──
 function selectCover(el, type) {
@@ -291,6 +302,71 @@ function removeChild(id) {
   });
 }
 
+// ── Beneficiary ──
+function addBeneficiary() {
+  beneficiaryCount++;
+  const list = document.getElementById('beneficiary-list');
+  const id = 'ben_' + beneficiaryCount;
+  const num = list.querySelectorAll('.traveller-card').length + 1;
+  const div = document.createElement('div');
+  div.className = 'traveller-card';
+  div.id = id;
+  div.innerHTML = `
+    <div class="tc-header">
+      <div class="tc-num">${num}</div>
+      <div class="tc-label">Beneficiary ${num}（受益人 ${num}）</div>
+      <button type="button" onclick="removeBeneficiary('${id}')" style="margin-left:auto;background:none;border:1.5px solid #fca5a5;border-radius:6px;color:#dc2626;font-size:13px;padding:3px 10px;cursor:pointer">✕ 移除</button>
+    </div>
+    <div class="row">
+      <div class="field">
+        <label>受益人姓名 Full Name</label>
+        <input type="text" class="b-name" placeholder="e.g. Siti binti Ahmad">
+      </div>
+      <div class="field">
+        <label>IC / Passport No.</label>
+        <input type="text" class="b-ic" placeholder="e.g. 850101-14-5566">
+      </div>
+    </div>
+    <div class="row">
+      <div class="field">
+        <label>与被保人关系 Relationship</label>
+        <input type="text" class="b-relation" placeholder="e.g. Spouse / Child / Parent">
+      </div>
+      <div class="field">
+        <label>分配比例 Allocation %（选填）</label>
+        <input type="text" class="b-percent" placeholder="e.g. 100% 或 50%">
+      </div>
+    </div>
+  `;
+  list.appendChild(div);
+}
+
+function removeBeneficiary(id) {
+  const el = document.getElementById(id);
+  if (el) el.remove();
+  // Re-number remaining cards
+  const cards = document.querySelectorAll('#beneficiary-list .traveller-card');
+  cards.forEach((c, i) => {
+    const numEl = c.querySelector('.tc-num');
+    if (numEl) numEl.textContent = i + 1;
+    const labelEl = c.querySelector('.tc-label');
+    if (labelEl) labelEl.textContent = 'Beneficiary ' + (i + 1) + '（受益人 ' + (i + 1) + '）';
+  });
+}
+
+function collectBeneficiaries() {
+  const result = [];
+  document.querySelectorAll('#beneficiary-list .traveller-card').forEach((card, i) => {
+    const name     = card.querySelector('.b-name')?.value.trim()     || '';
+    const ic       = card.querySelector('.b-ic')?.value.trim()       || '';
+    const relation = card.querySelector('.b-relation')?.value.trim() || '';
+    const percent  = card.querySelector('.b-percent')?.value.trim()  || '';
+    if (!name && !ic && !relation && !percent) return; // 空白行不计入
+    result.push(`受益人${i+1}: ${name||'—'} | IC: ${ic||'—'} | 关系: ${relation||'—'}` + (percent ? ' | 分配: '+percent : ''));
+  });
+  return result.join('\n');
+}
+
 // ── Date helpers ──
 function calcDays() {
   const dep = document.getElementById('c_depart').value;
@@ -345,6 +421,17 @@ function validate() {
     if (!icEl.value.trim())   { icEl.classList.add('invalid');   ok=false; } else icEl.classList.remove('invalid');
     if (!dobEl.value)         { dobEl.classList.add('invalid');  ok=false; } else dobEl.classList.remove('invalid');
   });
+  // Validate beneficiary fields（只要有填写任何一栏，姓名与IC就必须填写；整行留空则跳过，因为是选填）
+  document.querySelectorAll('#beneficiary-list .traveller-card').forEach(card => {
+    const nameEl = card.querySelector('.b-name');
+    const icEl   = card.querySelector('.b-ic');
+    const relEl  = card.querySelector('.b-relation');
+    const pctEl  = card.querySelector('.b-percent');
+    const anyFilled = nameEl.value.trim() || icEl.value.trim() || relEl.value.trim() || pctEl.value.trim();
+    if (!anyFilled) { nameEl.classList.remove('invalid'); icEl.classList.remove('invalid'); return; }
+    if (!nameEl.value.trim()) { nameEl.classList.add('invalid'); ok=false; } else nameEl.classList.remove('invalid');
+    if (!icEl.value.trim())   { icEl.classList.add('invalid');   ok=false; } else icEl.classList.remove('invalid');
+  });
   if (!ok) window.scrollTo({top:0,behavior:'smooth'});
   return ok;
 }
@@ -395,6 +482,8 @@ function submitForm() {
       document.getElementById('c_email').value.trim() ? 'Email: '+document.getElementById('c_email').value.trim() : '',
       '---旅客资料---',
       travellersSummary,
+      '---受益人资料---',
+      collectBeneficiaries() || '未指定 Not specified',
       notes ? '备注: '+notes : '',
     ].filter(Boolean).join(' | '),
     roadtaxType: '旅游保险询价 Travel Enquiry',
@@ -416,6 +505,7 @@ function submitForm() {
 
 // Init
 buildTravellers();
+addBeneficiary();
 </script>
 </body>
 </html>
