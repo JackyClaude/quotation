@@ -1092,7 +1092,41 @@ const COVER_LABEL = {individual:'Individual（个人）', spouse:'Individual & S
 const PLAN_LABEL = {silver:'Silver（银装）', gold:'Gold（金装）', diamond:'Diamond（钻石）'};
 const AREA_LABEL = {area1:'Area 1（亚太区）', area2:'Area 2（全球除美加）', area3:'Area 3（全球）'};
 
+// ── Zurich Z-Travel Domestic/Inbound Premium Table（RM，无 Area 之分，仅限马来西亚国内/入境旅游）──
+// Structure: [individual, ind_spouse, family]（此产品无 Senior 类别）
+const ZURICH_DOMESTIC_RATES = {
+  basic: {d1_5:[9,18,24],  d6_10:[12,23,31], d11_15:[18,34,45], d16_20:[23,43,57], extra_week:[7,13,18]},
+  vip:   {d1_5:[11,21,28], d6_10:[15,29,38], d11_15:[22,42,56], d16_20:[28,53,71], extra_week:[9,17,24]},
+};
+// Covid-19 附加保费（选择性），Basic 与 VIP 计划共用同一张附加保费表
+const ZURICH_DOMESTIC_COVID_RATES = {
+  d1_5:[4,8,10], d6_10:[5,10,13], d11_15:[8,14,19], d16_20:[10,18,24], extra_week:[3,5,7],
+};
+const DOM_PLAN_LABEL = {basic:'Basic Plan（基本计划）', vip:'VIP Plan'};
+// Schedule of Benefits — Zurich Z-Travel (Domestic/Inbound)，Serial No.: ZTRA-upgraded/DOS-covid19/PW/20250701
+const DOMESTIC_BENEFITS = {
+  basic: {deathDisability:'RM 50,000', medExpenses:'RM 5,000'},
+  vip:   {deathDisability:'RM 100,000', medExpenses:'RM 10,000'},
+};
+// 以下保障两个计划金额相同
+const DOMESTIC_BENEFITS_COMMON = {
+  hospitalIncome:'RM 100/天，最多60天',
+  evacuation:'马来西亚国内：无限额 | 国外：RM 50,000',
+  cancellation:'RM 2,000',
+  interruption:'RM 2,000（仅限航班延误）',
+  delay:'每6小时RM150，最多RM450（仅限航班）',
+  baggageDelay:'最多RM200（仅限航班）',
+  baggage:'RM 500（单件/一对上限RM100，行李上限RM250）',
+  liability:'RM 500,000',
+  golf:'RM 1,000（仅限失窃或损毁）',
+};
+// Section 3 Covid-19 保障（选择性，两计划金额相同）
+const DOMESTIC_COVID_BENEFITS = {
+  cancellation:'RM 2,000', alteration:'RM 2,000', medical:'RM 5,000', hospital:'RM 150/天，最多RM3,000', death:'RM 10,000',
+};
+
 let tInsurer = 'zurich';
+let tTripType = 'international';
 let tPlan = 'silver';
 let tArea = 'area1';
 let tCover = 'individual';
@@ -1104,14 +1138,42 @@ function selectTInsurer(el, key) {
   tInsurer = key;
   calcTravelPremium();
 }
+function selectTripType(el, key) {
+  document.querySelectorAll('#t-triptype-pills .area-pill').forEach(p => p.classList.remove('selected'));
+  el.classList.add('selected');
+  tTripType = key;
+  const isDom = key === 'domestic';
+
+  document.getElementById('t-plan-international').style.display = isDom ? 'none' : 'flex';
+  document.getElementById('t-plan-domestic').style.display = isDom ? 'flex' : 'none';
+  document.getElementById('t-area-block').style.display = isDom ? 'none' : 'block';
+  document.getElementById('cover-pill-senior').style.display = isDom ? 'none' : 'block';
+  document.getElementById('t-ins-sub').textContent = isDom ? 'Z-Travel Insurance (Domestic/Inbound)' : 'Z-Travel Insurance (International)';
+  document.getElementById('t-domestic-note').style.display = isDom ? 'block' : 'none';
+
+  // 重设为各自默认的 Plan 与 Cover Type
+  tPlan = isDom ? 'basic' : 'silver';
+  document.querySelectorAll('#t-plan-international .plan-pill, #t-plan-domestic .plan-pill').forEach(p => p.classList.remove('selected'));
+  const defaultPlanPill = document.querySelector((isDom ? '#t-plan-domestic' : '#t-plan-international') + ' .plan-pill');
+  if (defaultPlanPill) defaultPlanPill.classList.add('selected');
+
+  if (isDom && tCover === 'senior') {
+    tCover = 'individual';
+    document.querySelectorAll('.cover-pill').forEach(p => p.classList.remove('selected'));
+    const defaultCoverPill = document.querySelector('.cover-pill[data-cover="individual"]');
+    if (defaultCoverPill) defaultCoverPill.classList.add('selected');
+  }
+
+  calcTravelPremium();
+}
 function selectTPlan(el, key) {
-  document.querySelectorAll('.plan-pill').forEach(p => p.classList.remove('selected'));
+  document.querySelectorAll('#t-plan-international .plan-pill, #t-plan-domestic .plan-pill').forEach(p => p.classList.remove('selected'));
   el.classList.add('selected');
   tPlan = key;
   calcTravelPremium();
 }
 function selectTArea(el, key) {
-  document.querySelectorAll('.area-pill').forEach(p => p.classList.remove('selected'));
+  document.querySelectorAll('#t-area-block .area-pill').forEach(p => p.classList.remove('selected'));
   el.classList.add('selected');
   tArea = key;
   calcTravelPremium();
@@ -1179,13 +1241,50 @@ function calcTravelPremium() {
     errEl.style.display='block'; return;
   }
 
+  const bucket = getDayBucket(days);
+  let basePremium = 0, covidPremium = 0, breakdown = '';
+
+  if (tTripType === 'domestic') {
+    const planRates = ZURICH_DOMESTIC_RATES[tPlan];
+    const cIdx = COVER_IDX[tCover];
+    if (cIdx > 2) { errEl.textContent='Domestic/Inbound 产品暂无 Senior 类别，请重新选择保障类型。'; errEl.style.display='block'; return; }
+
+    if (bucket.key === 'extra') {
+      const base20 = planRates.d16_20[cIdx];
+      const weekly = planRates.extra_week[cIdx];
+      basePremium = base20 + (bucket.extraWeeks * weekly);
+      breakdown = '16-20天基础: RM'+base20+' + '+bucket.extraWeeks+'周 × RM'+weekly;
+    } else {
+      basePremium = planRates[bucket.key][cIdx];
+      breakdown = bucket.label + ' 基础保费';
+    }
+
+    if (tCovidOn) {
+      const cr = ZURICH_DOMESTIC_COVID_RATES;
+      if (bucket.key === 'extra') {
+        covidPremium = cr.d16_20[cIdx] + bucket.extraWeeks * cr.extra_week[cIdx];
+        breakdown += ' | Covid附加: RM'+cr.d16_20[cIdx]+'+'+bucket.extraWeeks+'×RM'+cr.extra_week[cIdx];
+      } else {
+        covidPremium = cr[bucket.key][cIdx];
+        breakdown += ' | Covid附加: RM'+covidPremium;
+      }
+    }
+
+    const subTotal = basePremium + covidPremium;
+    const stampDuty = subTotal > 150 ? 10 : 0;
+    const total = subTotal + stampDuty;
+    document.getElementById('t-premium-amount').textContent = 'RM ' + total.toFixed(2);
+    document.getElementById('t-premium-breakdown').innerHTML =
+      breakdown + '<br>计划: ' + DOM_PLAN_LABEL[tPlan] + ' | ' + COVER_LABEL[tCover] + ' | Domestic/Inbound（限马来西亚国内/入境旅游，最长60天）' +
+      (tCovidOn ? '<br>✅ 含Covid-19附加保障（选择性）' : '') +
+      (stampDuty > 0 ? '<br>+ Stamp Duty: RM10.00' : '');
+    resEl.style.display='block';
+    return {total, basePremium, covidPremium, stampDuty};
+  }
+
   const areaRates = ZURICH_RATES.zurich[tArea];
   const planRates = areaRates[tPlan];
   const cIdx = COVER_IDX[tCover];
-
-  // Check senior annual restriction
-  const bucket = getDayBucket(days);
-  let basePremium = 0, breakdown = '';
 
   if (bucket.key === 'extra') {
     const base20 = planRates.d16_20[cIdx];
@@ -1204,7 +1303,6 @@ function calcTravelPremium() {
     breakdown = bucket.label + ' 基础保费';
   }
 
-  let covidPremium = 0;
   if (tCovidOn) {
     const covidRates = areaRates.covid[tPlan];
     if (bucket.key === 'extra') {
@@ -1242,47 +1340,105 @@ function generateTravelQuote() {
   if (!days) { alert('请填写出发和回程日期！'); return; }
   const calc = calcTravelPremium();
   if (!calc) { alert('请确认所有选项后再生成！'); return; }
-  const { total, stampDuty } = calc;
+  const { total, basePremium, covidPremium, stampDuty } = calc;
 
   const qNo  = getQuotationNo('TI');
   const today = new Date().toLocaleDateString('zh-MY',{year:'numeric',month:'long',day:'numeric'});
   const depFmt = dep ? formatDateDisplay(dep) : '—';
   const retFmt = ret ? formatDateDisplay(ret) : '—';
-  const areaRates = ZURICH_RATES.zurich[tArea];
-  const planRates = areaRates[tPlan];
-  const cIdx = COVER_IDX[tCover];
-  const bucket = getDayBucket(days);
-  let basePremium = 0;
-  if (bucket.key==='extra') {
-    basePremium = planRates.d16_20[cIdx] + bucket.extraWeeks * planRates.extra_week[cIdx];
-  } else {
-    basePremium = planRates[bucket.key][cIdx];
-  }
-  let covidPremium = 0;
-  if (tCovidOn) {
-    const cr = areaRates.covid[tPlan];
-    if (bucket.key==='extra') {
-      covidPremium = cr.d16_20[cIdx] + bucket.extraWeeks * cr.extra_week[cIdx];
-    } else {
-      covidPremium = cr[bucket.key][cIdx] || 0;
-    }
-  }
+  const isDom = tTripType === 'domestic';
 
-  const localSubTotal = basePremium + covidPremium;
-  // Key benefits per plan
-  const benefits = {
-    silver:  {medical:'RM 300,000', accident:'RM 300,000 (18-85yrs)', cancellation:'RM 20,000', baggage:'RM 5,000'},
-    gold:    {medical:'RM 500,000', accident:'RM 300,000 (18-85yrs)', cancellation:'RM 25,000', baggage:'RM 7,000'},
-    diamond: {medical:'Unlimited（无限额）', accident:'RM 500,000 (18-85yrs)', cancellation:'RM 30,000', baggage:'RM 10,000'},
-  };
-  const b = benefits[tPlan];
+  let planAreaCell, productTagline, insurerLine, keyBenefitsHtml, keyBenefitsSummary, planLine, sheetInsurer, sheetArea;
+
+  if (isDom) {
+    const b = DOMESTIC_BENEFITS[tPlan];
+    const c = DOMESTIC_BENEFITS_COMMON;
+    productTagline = 'Z-Travel Insurance (Domestic/Inbound)';
+    insurerLine = '🏢 Zurich General Insurance — Z-Travel Insurance (Domestic/Inbound)';
+    planAreaCell = `<div class="info-cell"><div class="lbl">Plan / 计划</div><div class="val">${DOM_PLAN_LABEL[tPlan]}</div></div>
+        <div class="info-cell"><div class="lbl">Trip Type / 旅游类型</div><div class="val">Domestic/Inbound（国内/入境）</div></div>
+        <div class="info-cell"><div class="lbl">Cover Type / 保障类型</div><div class="val">${COVER_LABEL[tCover]}</div></div>`;
+    planLine = `计划：${DOM_PLAN_LABEL[tPlan]} | Domestic/Inbound`;
+    keyBenefitsHtml = `
+        <div class="rider-item"><span class="r-name">Accidental Death &amp; Permanent Disablement（意外身故及终身残废）</span><span class="r-amt">${b.deathDisability}</span></div>
+        <div class="rider-item"><span class="r-name">Accidental Medical Expenses（意外医疗费用）</span><span class="r-amt">${b.medExpenses}</span></div>
+        <div class="rider-item"><span class="r-name">Accidental Hospital Income（意外住院津贴）</span><span class="r-amt">${c.hospitalIncome}</span></div>
+        <div class="rider-item"><span class="r-name">Evacuation and Repatriation（疏散与遣返）</span><span class="r-amt">${c.evacuation}</span></div>
+        <div class="rider-item"><span class="r-name">Travel Cancellation（旅程取消）</span><span class="r-amt">${c.cancellation}</span></div>
+        <div class="rider-item"><span class="r-name">Travel Interruption（旅程中断）</span><span class="r-amt">${c.interruption}</span></div>
+        <div class="rider-item"><span class="r-name">Travel Delay（旅程延误）</span><span class="r-amt">${c.delay}</span></div>
+        <div class="rider-item"><span class="r-name">Baggage Delay（行李延误）</span><span class="r-amt">${c.baggageDelay}</span></div>
+        <div class="rider-item"><span class="r-name">Baggage and Personal Effects（行李及随身财产）</span><span class="r-amt">${c.baggage}</span></div>
+        <div class="rider-item"><span class="r-name">Personal Liability（个人责任）</span><span class="r-amt">${c.liability}</span></div>
+        <div class="rider-item"><span class="r-name">Golf Equipment（高尔夫器材，仅限失窃/损毁）</span><span class="r-amt">${c.golf}</span></div>
+        ${tCovidOn ? `
+        <div class="rider-item"><span class="r-name">✅ Travel Cancellation due to Covid-19</span><span class="r-amt">${DOMESTIC_COVID_BENEFITS.cancellation}</span></div>
+        <div class="rider-item"><span class="r-name">✅ Travel Alteration due to Covid-19</span><span class="r-amt">${DOMESTIC_COVID_BENEFITS.alteration}</span></div>
+        <div class="rider-item"><span class="r-name">✅ Medical Expenses due to Covid-19</span><span class="r-amt">${DOMESTIC_COVID_BENEFITS.medical}</span></div>
+        <div class="rider-item"><span class="r-name">✅ Hospital Allowance due to Covid-19</span><span class="r-amt">${DOMESTIC_COVID_BENEFITS.hospital}</span></div>
+        <div class="rider-item"><span class="r-name">✅ Death due to Covid-19</span><span class="r-amt">${DOMESTIC_COVID_BENEFITS.death}</span></div>` : ''}`;
+    keyBenefitsSummary = [
+      `✅ 意外身故及终身残废：${b.deathDisability}`,
+      `✅ 意外医疗费用：${b.medExpenses}`,
+      `✅ 意外住院津贴：${c.hospitalIncome}`,
+      `✅ 疏散与遣返：${c.evacuation}`,
+      `✅ 旅程取消：${c.cancellation}`,
+      `✅ 旅程中断：${c.interruption}`,
+      `✅ 旅程延误：${c.delay}`,
+      `✅ 行李延误：${c.baggageDelay}`,
+      `✅ 行李及随身财产：${c.baggage}`,
+      `✅ 个人责任：${c.liability}`,
+      `✅ 高尔夫器材：${c.golf}`,
+      ...(tCovidOn ? [
+        `✅ Covid-19旅程取消：${DOMESTIC_COVID_BENEFITS.cancellation}`,
+        `✅ Covid-19旅程更改：${DOMESTIC_COVID_BENEFITS.alteration}`,
+        `✅ Covid-19医疗费用：${DOMESTIC_COVID_BENEFITS.medical}`,
+        `✅ Covid-19住院津贴：${DOMESTIC_COVID_BENEFITS.hospital}`,
+        `✅ Covid-19身故：${DOMESTIC_COVID_BENEFITS.death}`,
+      ] : []),
+    ];
+    sheetInsurer = 'Zurich Z-Travel Domestic/Inbound '+DOM_PLAN_LABEL[tPlan];
+    sheetArea = 'Domestic/Inbound（马来西亚国内/入境，限60天）';
+  } else {
+    const benefits = {
+      silver:  {medical:'RM 300,000', accident:'RM 300,000 (18-85yrs)', cancellation:'RM 20,000', baggage:'RM 5,000'},
+      gold:    {medical:'RM 500,000', accident:'RM 300,000 (18-85yrs)', cancellation:'RM 25,000', baggage:'RM 7,000'},
+      diamond: {medical:'Unlimited（无限额）', accident:'RM 500,000 (18-85yrs)', cancellation:'RM 30,000', baggage:'RM 10,000'},
+    };
+    const b = benefits[tPlan];
+    productTagline = 'Z-Travel Insurance (International)';
+    insurerLine = '🏢 Zurich General Insurance — Z-Travel International';
+    planAreaCell = `<div class="info-cell"><div class="lbl">Plan / 计划</div><div class="val">${PLAN_LABEL[tPlan]}</div></div>
+        <div class="info-cell"><div class="lbl">Area / 地区</div><div class="val">${AREA_LABEL[tArea]}</div></div>
+        <div class="info-cell"><div class="lbl">Cover Type / 保障类型</div><div class="val">${COVER_LABEL[tCover]}</div></div>`;
+    planLine = `计划：${PLAN_LABEL[tPlan]} | ${AREA_LABEL[tArea]}`;
+    keyBenefitsHtml = `
+        <div class="rider-item"><span class="r-name">Overseas Medical Expenses（海外医疗费用）</span><span class="r-amt">${b.medical}</span></div>
+        <div class="rider-item"><span class="r-name">Emergency Medical Evacuation（紧急医疗运送）</span><span class="r-amt">Unlimited</span></div>
+        <div class="rider-item"><span class="r-name">Accidental Death & Disablement（意外身故及全残）</span><span class="r-amt">${b.accident}</span></div>
+        <div class="rider-item"><span class="r-name">Travel Cancellation（旅程取消）</span><span class="r-amt">${b.cancellation}</span></div>
+        <div class="rider-item"><span class="r-name">Baggage & Personal Effects（行李及随身财产）</span><span class="r-amt">${b.baggage}</span></div>
+        <div class="rider-item"><span class="r-name">Personal Liability（个人责任）</span><span class="r-amt">RM 1,000,000</span></div>
+        ${tCovidOn ? '<div class="rider-item"><span class="r-name">✅ Covid-19 附加保障（选择性）</span><span class="r-amt" style="color:#16a34a">已加入</span></div>' : ''}`;
+    keyBenefitsSummary = [
+      `✅ 海外医疗费用：${b.medical}`,
+      '✅ 紧急医疗运送：Unlimited（无限额）',
+      `✅ 意外身故及全残：${b.accident}`,
+      `✅ 旅程取消：${b.cancellation}`,
+      `✅ 行李及随身财产：${b.baggage}`,
+      '✅ 个人责任：RM 1,000,000',
+      ...(tCovidOn ? ['✅ Covid-19 附加保障：已加入'] : []),
+    ];
+    sheetInsurer = 'Zurich Z-Travel '+PLAN_LABEL[tPlan];
+    sheetArea = AREA_LABEL[tArea];
+  }
 
   document.getElementById('quote-output').innerHTML = `
     <div class="quote-header">
       <div>
         <div class="quote-company">CGW Risk Management</div>
         <div class="quote-tagline">Travel Insurance Quotation · 旅游保险报价单</div>
-        <div class="quote-insurer">🏢 Zurich General Insurance — Z-Travel International</div>
+        <div class="quote-insurer">${insurerLine}</div>
       </div>
       <div class="quote-header-right">
         <div class="quote-badge">Travel</div>
@@ -1297,22 +1453,12 @@ function generateTravelQuote() {
         <div class="info-cell"><div class="lbl">Return / 回程</div><div class="val">${retFmt}</div></div>
         <div class="info-cell"><div class="lbl">Duration / 旅游天数</div><div class="val">${days} 天</div></div>
         <div class="info-cell"><div class="lbl">Destination / 目的地</div><div class="val">${dest}</div></div>
-        <div class="info-cell"><div class="lbl">Plan / 计划</div><div class="val">${PLAN_LABEL[tPlan]}</div></div>
-        <div class="info-cell"><div class="lbl">Area / 地区</div><div class="val">${AREA_LABEL[tArea]}</div></div>
-        <div class="info-cell"><div class="lbl">Cover Type / 保障类型</div><div class="val">${COVER_LABEL[tCover]}</div></div>
+        ${planAreaCell}
         <div class="info-cell" style="grid-column:2"><div class="lbl">Quotation Date / 报价日期</div><div class="val">${today}</div></div>
       </div>
 
       <div class="section-heading">主要保障 Key Benefits</div>
-      <div class="rider-list">
-        <div class="rider-item"><span class="r-name">Overseas Medical Expenses（海外医疗费用）</span><span class="r-amt">${b.medical}</span></div>
-        <div class="rider-item"><span class="r-name">Emergency Medical Evacuation（紧急医疗运送）</span><span class="r-amt">Unlimited</span></div>
-        <div class="rider-item"><span class="r-name">Accidental Death & Disablement（意外身故及全残）</span><span class="r-amt">${b.accident}</span></div>
-        <div class="rider-item"><span class="r-name">Travel Cancellation（旅程取消）</span><span class="r-amt">${b.cancellation}</span></div>
-        <div class="rider-item"><span class="r-name">Baggage & Personal Effects（行李及随身财产）</span><span class="r-amt">${b.baggage}</span></div>
-        <div class="rider-item"><span class="r-name">Personal Liability（个人责任）</span><span class="r-amt">RM 1,000,000</span></div>
-        ${tCovidOn ? '<div class="rider-item"><span class="r-name">✅ Covid-19 附加保障（选择性）</span><span class="r-amt" style="color:#16a34a">已加入</span></div>' : ''}
-      </div>
+      <div class="rider-list">${keyBenefitsHtml}</div>
 
       <div class="section-heading">费用明细 Pricing</div>
       <div class="price-table">
@@ -1332,7 +1478,7 @@ function generateTravelQuote() {
       </div>
     </div>
     <div style="padding:12px 36px;font-size:11px;color:#999;text-align:center;border-top:1px dashed var(--border);">
-      ⚠️ 免责声明：如有失误，一切资讯皆以公司 Quotation 为准。保障细节请参阅正式保单。
+      ⚠️ 免责声明：如有失误，一切资讯皆以公司 Quotation 为准。保障细节请参阅正式保单。${isDom ? '（Domestic/Inbound：投保人须年满30天至80岁，随行小孩30天至17岁或全日制学生23岁以下；单次旅程最长60天）' : ''}
     </div>
     <div class="quote-footer">此报价单由 CGW Risk Management 发出 · 如有疑问请联络您的代理员 · This quotation is computer-generated.</div>
   `;
@@ -1342,22 +1488,16 @@ function generateTravelQuote() {
     '你好！😊 你的旅游保险资讯如下：',
     '',
     '━━━━━━━━━━━━━━━━━━━━',
-    '✈️ Zurich Z-Travel Insurance (International)',
+    '✈️ ' + insurerLine.replace('🏢 ', ''),
     `旅客：${name}`,
     `目的地：${dest}`,
     `出发：${depFmt} | 回程：${retFmt}（${days}天）`,
-    `计划：${PLAN_LABEL[tPlan]} | ${AREA_LABEL[tArea]}`,
+    planLine,
     `保障类型：${COVER_LABEL[tCover]}`,
     '━━━━━━━━━━━━━━━━━━━━',
     '',
     '🛡️ 主要保障：',
-    `✅ 海外医疗费用：${b.medical}`,
-    '✅ 紧急医疗运送：Unlimited（无限额）',
-    `✅ 意外身故及全残：${b.accident}`,
-    `✅ 旅程取消：${b.cancellation}`,
-    `✅ 行李及随身财产：${b.baggage}`,
-    '✅ 个人责任：RM 1,000,000',
-    ...(tCovidOn ? ['✅ Covid-19 附加保障：已加入'] : []),
+    ...keyBenefitsSummary,
     '',
     '━━━━━━━━━━━━━━━━━━━━',
     '💰 保费明细：',
@@ -1381,11 +1521,11 @@ function generateTravelQuote() {
   // Save to sheet
   saveToSheet({
     quotationNo: qNo, date: today, owner: name, plate: dest,
-    ncd: COVER_LABEL[tCover], insurer: 'Zurich Z-Travel '+PLAN_LABEL[tPlan],
+    ncd: COVER_LABEL[tCover], insurer: sheetInsurer,
     premium: basePremium.toFixed(2), roadtax: covidPremium.toFixed(2),
     serviceFee: '0', total: total.toFixed(2),
     riders: 'Travel Insurance' + (tCovidOn?' + Covid-19':''),
-    roadtaxType: AREA_LABEL[tArea]
+    roadtaxType: sheetArea
   });
 }
 
@@ -1395,13 +1535,25 @@ function generateTravelQuote() {
 <div class="view" id="view-travel">
 <div style="max-width:820px;margin:0 auto">
 
+  <!-- Trip Type -->
+  <div class="t-section">
+    <div class="t-section-title">旅游类型 Trip Type</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap" id="t-triptype-pills">
+      <div class="area-pill selected" onclick="selectTripType(this,'international')">🌏 International<div style="font-size:10px;color:var(--gray);margin-top:2px">国际（Silver/Gold/Diamond）</div></div>
+      <div class="area-pill" onclick="selectTripType(this,'domestic')">🇲🇾 Domestic / Inbound<div style="font-size:10px;color:var(--gray);margin-top:2px">国内/入境（Basic/VIP）</div></div>
+    </div>
+    <div id="t-domestic-note" style="display:none;font-size:11.5px;color:var(--gray);margin-top:10px;line-height:1.6;">
+      Domestic/Inbound 仅适用于马来西亚国内旅游或入境马来西亚旅游，单次旅程最长60天；投保人须年满30天至80岁，随行小孩30天至17岁（全日制学生可至23岁）。
+    </div>
+  </div>
+
   <!-- Insurer -->
   <div class="t-section">
     <div class="t-section-title">保险公司 Insurer</div>
     <div class="ins-grid" id="t-insurer-grid">
       <div class="ins-card selected" onclick="selectTInsurer(this,'zurich')" data-ins="zurich">
         <div class="ic-name">Zurich General Insurance</div>
-        <div class="ic-sub">Z-Travel Insurance (International)</div>
+        <div class="ic-sub" id="t-ins-sub">Z-Travel Insurance (International)</div>
       </div>
       <div class="ins-card" onclick="selectTInsurer(this,'other')" data-ins="other" style="display:flex;align-items:center;justify-content:center;border-style:dashed">
         <div style="text-align:center;color:var(--gray);font-size:13px">✏️<br>其他（即将推出）</div>
@@ -1440,13 +1592,17 @@ function generateTravelQuote() {
     <div class="t-section-title">保险计划 Plan</div>
     <div style="margin-bottom:14px">
       <label style="font-size:12px;font-weight:600;color:var(--gray);display:block;margin-bottom:8px">计划 Plan Type</label>
-      <div class="plan-pills">
+      <div class="plan-pills" id="t-plan-international">
         <div class="plan-pill selected" onclick="selectTPlan(this,'silver')">🥈 Silver</div>
         <div class="plan-pill" onclick="selectTPlan(this,'gold')">🥇 Gold</div>
         <div class="plan-pill" onclick="selectTPlan(this,'diamond')">💎 Diamond</div>
       </div>
+      <div class="plan-pills" id="t-plan-domestic" style="display:none">
+        <div class="plan-pill selected" onclick="selectTPlan(this,'basic')">Basic Plan（基本）</div>
+        <div class="plan-pill" onclick="selectTPlan(this,'vip')">VIP Plan</div>
+      </div>
     </div>
-    <div style="margin-bottom:14px">
+    <div style="margin-bottom:14px" id="t-area-block">
       <label style="font-size:12px;font-weight:600;color:var(--gray);display:block;margin-bottom:8px">旅游地区 Area</label>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <div class="area-pill selected" onclick="selectTArea(this,'area1')">Area 1<div style="font-size:10px;color:var(--gray);margin-top:2px">亚太区</div></div>
@@ -1457,10 +1613,10 @@ function generateTravelQuote() {
     <div>
       <label style="font-size:12px;font-weight:600;color:var(--gray);display:block;margin-bottom:8px">保障类型 Cover Type</label>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <div class="cover-pill selected" onclick="selectTCover(this,'individual')">Individual<div style="font-size:10px;color:var(--gray)">个人</div></div>
-        <div class="cover-pill" onclick="selectTCover(this,'spouse')">Ind & Spouse<div style="font-size:10px;color:var(--gray)">个人+配偶</div></div>
-        <div class="cover-pill" onclick="selectTCover(this,'family')">Family<div style="font-size:10px;color:var(--gray)">家庭</div></div>
-        <div class="cover-pill" onclick="selectTCover(this,'senior')">Senior<div style="font-size:10px;color:var(--gray)">年长者71-85岁</div></div>
+        <div class="cover-pill selected" data-cover="individual" onclick="selectTCover(this,'individual')">Individual<div style="font-size:10px;color:var(--gray)">个人</div></div>
+        <div class="cover-pill" data-cover="spouse" onclick="selectTCover(this,'spouse')">Ind & Spouse<div style="font-size:10px;color:var(--gray)">个人+配偶</div></div>
+        <div class="cover-pill" data-cover="family" onclick="selectTCover(this,'family')">Family<div style="font-size:10px;color:var(--gray)">家庭</div></div>
+        <div class="cover-pill" id="cover-pill-senior" data-cover="senior" onclick="selectTCover(this,'senior')">Senior<div style="font-size:10px;color:var(--gray)">年长者71-85岁</div></div>
       </div>
     </div>
 
