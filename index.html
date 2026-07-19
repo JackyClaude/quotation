@@ -184,6 +184,19 @@
     <input type="text" id="insurer-custom" placeholder="输入保险公司名称..." style="display:none;width:100%">
   </div>
 
+  <!-- Zurich 保障计划（仅Zurich出现） -->
+  <div class="section" id="car-plan-section" style="display:none">
+    <div class="section-title">Z-Driver 保障计划 Plan</div>
+    <div class="plan-pills" id="car-plan-pills">
+      <div class="plan-pill selected" onclick="selectCarPlan(this,'essential')" data-plan="essential">Comprehensive – Essential</div>
+      <div class="plan-pill" onclick="selectCarPlan(this,'premier')" data-plan="premier">Comprehensive – Premier</div>
+      <div class="plan-pill" onclick="selectCarPlan(this,'tpft')" data-plan="tpft">Third Party, Fire &amp; Theft</div>
+    </div>
+    <div style="font-size:11.5px;color:var(--gray);margin-top:8px;line-height:1.6;">
+      提醒：部分附加保障（例如 Z-Drive Assist、Courtesy Car）只适用于 Premier 计划，Third Party, Fire &amp; Theft 计划则不提供意外碰撞的自身车损保障，请依保单条款核实。
+    </div>
+  </div>
+
   <!-- 车主资料 -->
   <div class="section">
     <div class="section-title">车主基本资料</div>
@@ -243,19 +256,91 @@
   <!-- Riders -->
   <div class="section">
     <div class="section-title">附加保障 Riders</div>
-    <div class="rider-row" onclick="toggleRider(this,event)"><input type="checkbox" data-key="windscreen"><span class="rider-label">Windscreen（风挡/大镜）</span><span class="rider-amt-label">保额 RM</span><input class="rider-amt" type="number" placeholder="0.00" onclick="event.stopPropagation()"></div>
-    <div class="rider-row" onclick="toggleRider(this,event)"><input type="checkbox" data-key="dpa"><span class="rider-label">Driver's Personal Accident（驾驶者人身意外）</span><span class="rider-amt-label">保额 RM</span><input class="rider-amt" type="number" placeholder="0.00" onclick="event.stopPropagation()"></div>
-    <div class="rider-row" onclick="toggleRider(this,event)"><input type="checkbox" data-key="fsp"><span class="rider-label">Full Special Perils（全面特殊风险）</span><span class="rider-amt-label"></span><span style="width:130px"></span></div>
-    <div class="rider-row" onclick="toggleRider(this,event)"><input type="checkbox" data-key="llp"><span class="rider-label">Legal Liability to Passengers（对乘客的法律责任）</span><span class="rider-amt-label"></span><span style="width:130px"></span></div>
-    <div class="rider-row" onclick="toggleRider(this,event)"><input type="checkbox" data-key="lop"><span class="rider-label">Legal Liability of Passengers（乘客的法律责任）</span><span class="rider-amt-label"></span><span style="width:130px"></span></div>
-    <div class="rider-row" onclick="toggleRider(this,event)"><input type="checkbox" data-key="wce"><span class="rider-label">Waiver of Compulsory Excess（豁免强制性超额自付）</span><span class="rider-amt-label"></span><span style="width:130px"></span></div>
-    <div class="rider-row" onclick="toggleRider(this,event)"><input type="checkbox" data-key="srcc"><span class="rider-label">Strike, Riot & Civil Commotion（罢工、暴动及内乱）</span><span class="rider-amt-label"></span><span style="width:130px"></span></div>
-    <div class="rider-row" onclick="toggleRider(this,event)"><input type="checkbox" data-key="tow"><span class="rider-label">24-Hour Unlimited Towing（24小时无限拖车服务）</span><span class="rider-amt-label"></span><span style="width:130px"></span></div>
-    <div class="rider-row" onclick="toggleRider(this,event)"><input type="checkbox" data-key="ace"><span class="rider-label">All Claim Excess（如发生 claim 需自付）</span><span class="rider-amt-label">金额 RM</span><input class="rider-amt" type="number" placeholder="0.00" onclick="event.stopPropagation()" data-amt="ace"></div>
+    <div class="rider-row" onclick="toggleRider(this,event)"><input type="checkbox" data-key="windscreen"><span class="rider-label" id="rl-windscreen">Windscreen（风挡/大镜）</span><span class="rider-amt-label">保额 RM</span><input class="rider-amt" type="number" placeholder="0.00" onclick="event.stopPropagation()"></div>
+    <div class="rider-row" onclick="toggleRider(this,event)"><input type="checkbox" data-key="dpa"><span class="rider-label" id="rl-dpa">Driver's Personal Accident（驾驶者人身意外）</span><span class="rider-amt-label">保额 RM</span><input class="rider-amt" type="number" placeholder="0.00" onclick="event.stopPropagation()"></div>
+    <div class="rider-row" onclick="toggleRider(this,event)"><input type="checkbox" data-key="fsp"><span class="rider-label" id="rl-fsp">Full Special Perils（全面特殊风险）</span><span class="rider-amt-label"></span><span style="width:130px"></span></div>
+    <div class="rider-row" onclick="toggleRider(this,event)"><input type="checkbox" data-key="llp"><span class="rider-label" id="rl-llp">Legal Liability to Passengers（对乘客的法律责任）</span><span class="rider-amt-label"></span><span style="width:130px"></span></div>
+    <div class="rider-row" onclick="toggleRider(this,event)"><input type="checkbox" data-key="lop"><span class="rider-label" id="rl-lop">Legal Liability of Passengers（乘客的法律责任）</span><span class="rider-amt-label"></span><span style="width:130px"></span></div>
+    <div class="rider-row" onclick="toggleRider(this,event)"><input type="checkbox" data-key="wce"><span class="rider-label" id="rl-wce">Waiver of Compulsory Excess（豁免强制性超额自付）</span><span class="rider-amt-label"></span><span style="width:130px"></span></div>
+    <div class="rider-row" onclick="toggleRider(this,event)"><input type="checkbox" data-key="srcc"><span class="rider-label" id="rl-srcc">Strike, Riot & Civil Commotion（罢工、暴动及内乱）</span><span class="rider-amt-label"></span><span style="width:130px"></span></div>
+    <div class="rider-row" onclick="toggleRider(this,event)"><input type="checkbox" data-key="tow"><span class="rider-label" id="rl-tow">24-Hour Unlimited Towing（24小时无限拖车服务）</span><span class="rider-amt-label"></span><span style="width:130px"></span></div>
+    <div class="rider-row" onclick="toggleRider(this,event)"><input type="checkbox" data-key="ace"><span class="rider-label" id="rl-ace">All Claim Excess（如发生 claim 需自付）</span><span class="rider-amt-label">金额 RM</span><input class="rider-amt" type="number" placeholder="0.00" onclick="event.stopPropagation()" data-amt="ace"></div>
     <div style="margin-top:16px;padding-top:14px;border-top:1px dashed var(--border);">
       <div style="font-size:11px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;color:var(--gray);margin-bottom:10px;">手动添加 Custom Riders</div>
       <div id="custom-riders-list"></div>
       <button class="add-rider-btn" onclick="addCustomRider()">＋ 添加自定义 Rider</button>
+    </div>
+  </div>
+
+  <!-- Zurich 专属 Riders（仅Zurich出现） -->
+  <div class="section" id="zurich-extra-riders-section" style="display:none">
+    <div class="section-title">Zurich 更多可选 Riders（Non-Tariff Endorsements）</div>
+    <div style="font-size:11.5px;color:var(--gray);margin:-6px 0 12px;line-height:1.6;">以下为 Z-Driver 保单条款内的其他非关税附加保障，勾选后金额会自动带入报价单与摘要。部分保障需依车辆/计划核实是否适用。</div>
+
+    <div class="rider-row zurich-only-rider" onclick="toggleRider(this,event)"><input type="checkbox" data-key="z_vol_excess"><span class="rider-label">Endorsement 1(a) – Voluntary Excess（自愿超额自付，可降低保费）</span><span class="rider-amt-label">自付额 RM</span><input class="rider-amt" type="number" placeholder="0.00" onclick="event.stopPropagation()"></div>
+
+    <div class="rider-row zurich-only-rider" onclick="toggleRider(this,event)"><input type="checkbox" data-key="z_caravan"><span class="rider-label">Endorsement 22 – Caravan / Luggage / Boat Trailer Cover（拖车/行李车/船只拖车保障）</span><span class="rider-amt-label">保额 RM</span><input class="rider-amt" type="number" placeholder="0.00" onclick="event.stopPropagation()"></div>
+
+    <div class="rider-row zurich-only-rider" onclick="toggleRider(this,event)"><input type="checkbox" data-key="z_reliability_trial"><span class="rider-label">Endorsement 24(c) – Reliability Trial / Competition Cover（可靠度测试/比赛用途保障）</span><span class="rider-amt-label"></span><span style="width:130px"></span></div>
+
+    <div class="rider-row zurich-only-rider" onclick="toggleRider(this,event)"><input type="checkbox" data-key="z_windscreen_enhanced"><span class="rider-label">Endorsement 89(a) – Windscreen Enhanced（升级版风挡保障，维修后额度可逐步恢复）</span><span class="rider-amt-label">保额 RM</span><input class="rider-amt" type="number" placeholder="0.00" onclick="event.stopPropagation()"></div>
+
+    <div class="rider-row zurich-only-rider" onclick="toggleRider(this,event)"><input type="checkbox" data-key="z_windscreen_repair"><span class="rider-label">Endorsement 263 – Free Windscreen/Windows Repair（免费风挡修补，非更换，每次自付RM50）</span><span class="rider-amt-label">保额 RM</span><input class="rider-amt" type="number" placeholder="0.00" onclick="event.stopPropagation()"></div>
+
+    <div class="rider-row zurich-only-rider" onclick="toggleRider(this,event)"><input type="checkbox" data-key="z_accessories"><span class="rider-label">Endorsement 97 – Separate Cover for Accessories（非原厂配件独立保障）</span><span class="rider-amt-label">保额 RM</span><input class="rider-amt" type="number" placeholder="0.00" onclick="event.stopPropagation()"></div>
+
+    <div class="rider-row zurich-only-rider" onclick="toggleRider(this,event)"><input type="checkbox" data-key="z_gas_kit"><span class="rider-label">Endorsement 97(a) – Gas Conversion Kit &amp; Tank（天然气转换配套保障）</span><span class="rider-amt-label">保额 RM</span><input class="rider-amt" type="number" placeholder="0.00" onclick="event.stopPropagation()"></div>
+
+    <div class="rider-row zurich-only-rider" onclick="toggleRider(this,event)"><input type="checkbox" data-key="z_thailand"><span class="rider-label">Endorsement 101 – Extension of Cover to Thailand（延伸至泰国使用，第三者责任上限RM100,000）</span><span class="rider-amt-label"></span><span style="width:130px"></span></div>
+
+    <div class="rider-row zurich-only-rider" onclick="toggleRider(this,event)"><input type="checkbox" data-key="z_kalimantan"><span class="rider-label">Endorsement 102 – Extension of Cover to Kalimantan（延伸至加里曼丹使用）</span><span class="rider-amt-label"></span><span style="width:130px"></span></div>
+
+    <div class="rider-row zurich-only-rider" onclick="toggleRider(this,event)"><input type="checkbox" data-key="z_tppd"><span class="rider-label">Endorsement 105 – TPPD Limit Increase（第三者财物损失责任提高至RM3M以上）</span><span class="rider-amt-label">新限额 RM</span><input class="rider-amt" type="number" placeholder="0.00" onclick="event.stopPropagation()"></div>
+
+    <div class="rider-row zurich-only-rider" onclick="toggleRider(this,event)"><input type="checkbox" data-key="z_ferry"><span class="rider-label">Endorsement 109 – Ferry Transit Sabah/Labuan（渡轮往返沙巴/纳闽保障）</span><span class="rider-amt-label"></span><span style="width:130px"></span></div>
+
+    <div class="rider-row zurich-only-rider" onclick="toggleRider(this,event)"><input type="checkbox" data-key="z_ncd_relief"><span class="rider-label">Endorsement 111 – Current Year NCD Relief（理赔后NCD补偿）</span><span class="rider-amt-label"></span><span style="width:130px"></span></div>
+
+    <div class="rider-row zurich-only-rider" onclick="toggleRider(this,event)"><input type="checkbox" data-key="z_cart"><span class="rider-label">Endorsement 112 – CART 维修期间每日津贴（Compensation for Assessed Repair Time）</span><span class="rider-amt-label">每日 RM</span><input class="rider-amt" type="number" placeholder="0.00" onclick="event.stopPropagation()"></div>
+
+    <div class="rider-row zurich-only-rider" onclick="toggleRider(this,event)"><input type="checkbox" data-key="z_pa_credit"><span class="rider-label">Endorsement 200C – Personal Accident with Credit Protection（人身意外+个人贷款保障）</span><span class="rider-amt-label">保额 RM</span><input class="rider-amt" type="number" placeholder="0.00" onclick="event.stopPropagation()"></div>
+
+    <div class="rider-row zurich-only-rider" onclick="toggleRider(this,event)"><input type="checkbox" data-key="z_water_towing"><span class="rider-label">Endorsement 202 – Towing &amp; Cleaning due to Water Damage（水灾拖车/清洗费用）</span><span class="rider-amt-label">保额 RM</span><input class="rider-amt" type="number" placeholder="0.00" onclick="event.stopPropagation()"></div>
+
+    <div class="rider-row zurich-only-rider" onclick="toggleRider(this,event)"><input type="checkbox" data-key="z_key_replace"><span class="rider-label">Endorsement 203 – Key Replacement（车钥匙遗失/被盗替换，赔80%费用）</span><span class="rider-amt-label">保额 RM</span><input class="rider-amt" type="number" placeholder="0.00" onclick="event.stopPropagation()"></div>
+
+    <div class="rider-row zurich-only-rider" onclick="toggleRider(this,event)"><input type="checkbox" data-key="z_waiver_betterment"><span class="rider-label">Endorsement 207 – Waiver of Betterment（车龄5-15年，免缴付Betterment差额）</span><span class="rider-amt-label"></span><span style="width:130px"></span></div>
+
+    <div class="rider-row zurich-only-rider" onclick="toggleRider(this,event)"><input type="checkbox" data-key="z_ehailing"><span class="rider-label">Endorsement 221 – E-Hailing Private Hire Car（网约车载客保障）</span><span class="rider-amt-label"></span><span style="width:130px"></span></div>
+
+    <div class="rider-row zurich-only-rider" onclick="toggleRider(this,event)"><input type="checkbox" data-key="z_ehailing_daily"><span class="rider-label">Endorsement 221A – E-Hailing Private Hire Car – Daily（按日计算的网约车保障）</span><span class="rider-amt-label"></span><span style="width:130px"></span></div>
+
+    <div class="rider-row zurich-only-rider" onclick="toggleRider(this,event)"><input type="checkbox" data-key="z_zda_standard"><span class="rider-label">Endorsement 333 – Z-Drive Assist – Standard（人身意外+道路救援+水灾津贴配套）</span><span class="rider-amt-label">保额 RM</span><input class="rider-amt" type="number" placeholder="0.00" onclick="event.stopPropagation()"></div>
+
+    <div class="rider-row zurich-only-rider" onclick="toggleRider(this,event)"><input type="checkbox" data-key="z_zda_superior"><span class="rider-label">Endorsement 340 – Z-Drive Assist – Superior（含 Courtesy Car 的升级配套）</span><span class="rider-amt-label">保额 RM</span><input class="rider-amt" type="number" placeholder="0.00" onclick="event.stopPropagation()"></div>
+
+    <div class="rider-row zurich-only-rider" onclick="toggleRider(this,event)"><input type="checkbox" data-key="z_courtesy_car"><span class="rider-label">Endorsement 341 – Courtesy Car（维修期间代步车，或每日RM110现金津贴）</span><span class="rider-amt-label"></span><span style="width:130px"></span></div>
+
+    <div class="rider-row zurich-only-rider" onclick="toggleRider(this,event)"><input type="checkbox" data-key="z_zda_tpft"><span class="rider-label">Endorsement 342 – Z-Drive Assist – TPFT（适用于Third Party, Fire &amp; Theft计划）</span><span class="rider-amt-label">保额 RM</span><input class="rider-amt" type="number" placeholder="0.00" onclick="event.stopPropagation()"></div>
+
+    <div class="rider-row zurich-only-rider" onclick="toggleRider(this,event)"><input type="checkbox" data-key="z_rsa_excl_towing"><span class="rider-label">Endorsement 343 – Zurich Roadside Assistance – Excludes Accident Towing（不含意外拖车的道路救援）</span><span class="rider-amt-label"></span><span style="width:130px"></span></div>
+
+    <div class="rider-row zurich-only-rider" onclick="toggleRider(this,event)"><input type="checkbox" data-key="z_fire_theft_allowance"><span class="rider-label">Endorsement 344 – Fire &amp; Theft Allowance（火烧/被盗全损后的使用损失津贴）</span><span class="rider-amt-label">保额 RM</span><input class="rider-amt" type="number" placeholder="0.00" onclick="event.stopPropagation()"></div>
+
+    <div style="margin-top:18px;padding-top:14px;border-top:1px dashed var(--border);">
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--navy);cursor:pointer;margin-bottom:10px;">
+        <input type="checkbox" id="f_is_ev" onchange="toggleEvRiders()" style="width:17px;height:17px;accent-color:var(--navy);">
+        本车为电动车 Electric Vehicle（勾选后显示 EV 专属保障 Section H）
+      </label>
+      <div id="ev-riders-list" style="display:none">
+        <div class="rider-row zurich-only-rider" onclick="toggleRider(this,event)"><input type="checkbox" data-key="z_ev_charger_allrisk"><span class="rider-label">Endorsement 303 – EV Home Wall Charger – All Risk（家用充电桩全险）</span><span class="rider-amt-label">保额 RM</span><input class="rider-amt" type="number" placeholder="0.00" onclick="event.stopPropagation()"></div>
+        <div class="rider-row zurich-only-rider" onclick="toggleRider(this,event)"><input type="checkbox" data-key="z_ev_charger_standard"><span class="rider-label">Endorsement 304 – EV Home Wall Charger – Standard（家用充电桩基本保障）</span><span class="rider-amt-label">保额 RM</span><input class="rider-amt" type="number" placeholder="0.00" onclick="event.stopPropagation()"></div>
+        <div class="rider-row zurich-only-rider" onclick="toggleRider(this,event)"><input type="checkbox" data-key="z_ev_charger_liability"><span class="rider-label">Endorsement 305 – Personal Liability whilst using EV Chargers（使用充电桩时的第三方责任）</span><span class="rider-amt-label">保额 RM</span><input class="rider-amt" type="number" placeholder="0.00" onclick="event.stopPropagation()"></div>
+        <div class="rider-row zurich-only-rider" onclick="toggleRider(this,event)"><input type="checkbox" data-key="z_ev_cable"><span class="rider-label">Endorsement 306 – Portable Charging Cable Cover（便携充电线保障）</span><span class="rider-amt-label">保额 RM</span><input class="rider-amt" type="number" placeholder="0.00" onclick="event.stopPropagation()"></div>
+        <div class="rider-row zurich-only-rider" onclick="toggleRider(this,event)"><input type="checkbox" data-key="z_ev_public_charger"><span class="rider-label">Endorsement 307 – Compassionate Cover from Public EV Chargers（使用公共充电桩意外保障）</span><span class="rider-amt-label">保额 RM</span><input class="rider-amt" type="number" placeholder="0.00" onclick="event.stopPropagation()"></div>
+        <div class="rider-row zurich-only-rider" onclick="toggleRider(this,event)"><input type="checkbox" data-key="z_ev_ota"><span class="rider-label">Endorsement 308 – Performance Upgrades / OTA Updates（性能升级与OTA更新保障）</span><span class="rider-amt-label">保额 RM</span><input class="rider-amt" type="number" placeholder="0.00" onclick="event.stopPropagation()"></div>
+        <div class="rider-row zurich-only-rider" onclick="toggleRider(this,event)"><input type="checkbox" data-key="z_ev_special_perils"><span class="rider-label">Endorsement 309 – Inclusion of Special Perils for EV（电动车电池水灾等特殊风险）</span><span class="rider-amt-label"></span><span style="width:130px"></span></div>
+      </div>
     </div>
   </div>
 
@@ -370,8 +455,40 @@ function selectInsurer(pill, value) {
   const ci = document.getElementById('insurer-custom');
   if (value === '__custom__') { customInsurerMode = true; ci.style.display = 'block'; ci.focus(); selectedInsurer = ''; }
   else { customInsurerMode = false; ci.style.display = 'none'; selectedInsurer = value; }
+  // Zurich专属：显示Plan选择区 + 专属riders，并把通用riders文字换成Zurich条款用词
+  const planSection = document.getElementById('car-plan-section');
+  const zurichRidersSection = document.getElementById('zurich-extra-riders-section');
+  if (planSection) planSection.style.display = isZurich() ? 'block' : 'none';
+  if (zurichRidersSection) zurichRidersSection.style.display = isZurich() ? 'block' : 'none';
+  if (!isZurich()) {
+    // 切换离开Zurich时，清空已勾选的Zurich专属riders，避免出现在其他保险公司的报价单里
+    document.querySelectorAll('.zurich-only-rider').forEach(row => {
+      const cb = row.querySelector('input[type=checkbox]');
+      if (cb) { cb.checked = false; row.classList.remove('checked'); }
+      const amt = row.querySelector('.rider-amt');
+      if (amt) amt.value = '';
+    });
+    const evCb = document.getElementById('f_is_ev');
+    if (evCb) { evCb.checked = false; toggleEvRiders(); }
+  }
+  updateRiderLabelsUI();
 }
 function getInsurer() { return customInsurerMode ? document.getElementById('insurer-custom').value.trim() : selectedInsurer; }
+function isZurich() { return getInsurer() === 'Zurich General Insurance'; }
+function toggleEvRiders() {
+  const el = document.getElementById('ev-riders-list');
+  const cb = document.getElementById('f_is_ev');
+  if (el) el.style.display = (cb && cb.checked) ? 'block' : 'none';
+}
+
+// ── CAR PLAN (Zurich Z-Driver) ──
+let carPlan = 'essential';
+const CAR_PLAN_LABEL = { essential:'Comprehensive – Essential', premier:'Comprehensive – Premier', tpft:'Third Party, Fire & Theft' };
+function selectCarPlan(el, key) {
+  document.querySelectorAll('#car-plan-pills .plan-pill').forEach(p => p.classList.remove('selected'));
+  el.classList.add('selected');
+  carPlan = key;
+}
 
 // ── RIDERS ──
 function toggleRider(row, event) {
@@ -458,16 +575,66 @@ function getQuotationNo(prefix='MI') {
 // ── FORMAT ──
 function fmt(n) { return 'RM ' + parseFloat(n||0).toFixed(2); }
 
-const riderMeta = {
-  windscreen:{label:'Windscreen（风挡/大镜）',hasAmt:true},
-  dpa:{label:"Driver's Personal Accident（驾驶者人身意外）",hasAmt:true},
-  fsp:{label:'Full Special Perils（全面特殊风险）',hasAmt:false},
-  llp:{label:'Legal Liability to Passengers（对乘客的法律责任）',hasAmt:false},
-  lop:{label:'Legal Liability of Passengers（乘客的法律责任）',hasAmt:false},
-  wce:{label:'Waiver of Compulsory Excess（豁免强制性超额自付）',hasAmt:false},
-  srcc:{label:'Strike, Riot & Civil Commotion（罢工、暴动及内乱）',hasAmt:false},
-  tow:{label:'24-Hour Unlimited Towing（24小时无限拖车服务）',hasAmt:false},
+const RIDER_DEFS = {
+  windscreen:{hasAmt:true, generic:'Windscreen（风挡/大镜）', zurich:'Endorsement 89 – Windscreen, Windows & Sunroof Cover（风挡/车窗/天窗保障）'},
+  dpa:{hasAmt:true, generic:"Driver's Personal Accident（驾驶者人身意外）", zurich:'Endorsement 200 – Personal Accident Basic（人身意外基本保障）'},
+  fsp:{hasAmt:false, generic:'Full Special Perils（全面特殊风险）', zurich:'Endorsement 57 – Inclusion of Special Perils（特殊风险扩展保障，涵盖水灾/风灾/地震等）'},
+  llp:{hasAmt:false, generic:'Legal Liability to Passengers（对乘客的法律责任）', zurich:'Endorsement 100 – Legal Liability to Passengers（对乘客的法律责任）'},
+  lop:{hasAmt:false, generic:'Legal Liability of Passengers（乘客的法律责任）', zurich:'Endorsement 72 – Legal Liability of Passengers for Negligent Acts（乘客疏忽行为的法律责任）'},
+  wce:{hasAmt:false, generic:'Waiver of Compulsory Excess（豁免强制性超额自付）', zurich:'Endorsement 297A – Waiver of Compulsory Excess（豁免强制性超额自付 RM400）'},
+  srcc:{hasAmt:false, generic:'Strike, Riot & Civil Commotion（罢工、暴动及内乱）', zurich:'Endorsement 25 – Strike, Riot and Civil Commotion（罢工、暴动及内乱）'},
+  tow:{hasAmt:false, generic:'24-Hour Unlimited Towing（24小时无限拖车服务）', zurich:'Endorsement 332 – Zurich Roadside Assistance（Zurich 24小时道路救援，含拖车/小型维修/紧急住宿安排）'},
+  ace:{hasAmt:true, generic:'All Claim Excess（如发生 claim 需自付）', zurich:'Endorsement 1 / 1(a) – Excess All Claims（理赔自付额，第三者索赔除外）'},
+  // Zurich 专属 riders（只在选了Zurich时才会显示与勾选，label对两家保险公司一致）
+  z_vol_excess:{hasAmt:true, both:'Endorsement 1(a) – Voluntary Excess（自愿超额自付）'},
+  z_caravan:{hasAmt:true, both:'Endorsement 22 – Caravan / Luggage / Boat Trailer Cover（拖车/行李车/船只拖车保障）'},
+  z_reliability_trial:{hasAmt:false, both:'Endorsement 24(c) – Reliability Trial / Competition Cover（可靠度测试/比赛用途保障）'},
+  z_windscreen_enhanced:{hasAmt:true, both:'Endorsement 89(a) – Windscreen Enhanced（升级版风挡保障）'},
+  z_windscreen_repair:{hasAmt:true, both:'Endorsement 263 – Free Windscreen/Windows Repair（免费风挡修补）'},
+  z_accessories:{hasAmt:true, both:'Endorsement 97 – Separate Cover for Accessories（非原厂配件独立保障）'},
+  z_gas_kit:{hasAmt:true, both:'Endorsement 97(a) – Gas Conversion Kit & Tank（天然气转换配套保障）'},
+  z_thailand:{hasAmt:false, both:'Endorsement 101 – Extension of Cover to Thailand（延伸至泰国使用）'},
+  z_kalimantan:{hasAmt:false, both:'Endorsement 102 – Extension of Cover to Kalimantan（延伸至加里曼丹使用）'},
+  z_tppd:{hasAmt:true, both:'Endorsement 105 – TPPD Limit Increase（第三者财物损失责任提高）'},
+  z_ferry:{hasAmt:false, both:'Endorsement 109 – Ferry Transit Sabah/Labuan（渡轮往返沙巴/纳闽保障）'},
+  z_ncd_relief:{hasAmt:false, both:'Endorsement 111 – Current Year NCD Relief（理赔后NCD补偿）'},
+  z_cart:{hasAmt:true, both:'Endorsement 112 – CART 维修期间每日津贴'},
+  z_pa_credit:{hasAmt:true, both:'Endorsement 200C – Personal Accident with Credit Protection（人身意外+个人贷款保障）'},
+  z_water_towing:{hasAmt:true, both:'Endorsement 202 – Towing & Cleaning due to Water Damage（水灾拖车/清洗费用）'},
+  z_key_replace:{hasAmt:true, both:'Endorsement 203 – Key Replacement（车钥匙遗失/被盗替换）'},
+  z_waiver_betterment:{hasAmt:false, both:'Endorsement 207 – Waiver of Betterment（豁免Betterment差额）'},
+  z_ehailing:{hasAmt:false, both:'Endorsement 221 – E-Hailing Private Hire Car（网约车载客保障）'},
+  z_ehailing_daily:{hasAmt:false, both:'Endorsement 221A – E-Hailing Private Hire Car – Daily（按日计算的网约车保障）'},
+  z_zda_standard:{hasAmt:true, both:'Endorsement 333 – Z-Drive Assist – Standard（人身意外+道路救援+水灾津贴配套）'},
+  z_zda_superior:{hasAmt:true, both:'Endorsement 340 – Z-Drive Assist – Superior（含 Courtesy Car 的升级配套）'},
+  z_courtesy_car:{hasAmt:false, both:'Endorsement 341 – Courtesy Car（维修期间代步车）'},
+  z_zda_tpft:{hasAmt:true, both:'Endorsement 342 – Z-Drive Assist – TPFT（适用于Third Party, Fire & Theft计划）'},
+  z_rsa_excl_towing:{hasAmt:false, both:'Endorsement 343 – Zurich Roadside Assistance – Excludes Accident Towing'},
+  z_fire_theft_allowance:{hasAmt:true, both:'Endorsement 344 – Fire & Theft Allowance（火烧/被盗全损使用损失津贴）'},
+  z_ev_charger_allrisk:{hasAmt:true, both:'Endorsement 303 – EV Home Wall Charger – All Risk（家用充电桩全险）'},
+  z_ev_charger_standard:{hasAmt:true, both:'Endorsement 304 – EV Home Wall Charger – Standard（家用充电桩基本保障）'},
+  z_ev_charger_liability:{hasAmt:true, both:'Endorsement 305 – Personal Liability whilst using EV Chargers（使用充电桩时的第三方责任）'},
+  z_ev_cable:{hasAmt:true, both:'Endorsement 306 – Portable Charging Cable Cover（便携充电线保障）'},
+  z_ev_public_charger:{hasAmt:true, both:'Endorsement 307 – Compassionate Cover from Public EV Chargers（使用公共充电桩意外保障）'},
+  z_ev_ota:{hasAmt:true, both:'Endorsement 308 – Performance Upgrades / OTA Updates（性能升级与OTA更新保障）'},
+  z_ev_special_perils:{hasAmt:false, both:'Endorsement 309 – Inclusion of Special Perils for EV（电动车电池水灾等特殊风险）'},
 };
+const ZURICH_ONLY_KEYS = Object.keys(RIDER_DEFS).filter(k => k.startsWith('z_'));
+function getRiderMeta() {
+  const out = {};
+  const zurich = isZurich();
+  Object.entries(RIDER_DEFS).forEach(([k,v]) => {
+    out[k] = { label: v.both ? v.both : (zurich ? v.zurich : v.generic), hasAmt: v.hasAmt };
+  });
+  return out;
+}
+function updateRiderLabelsUI() {
+  const meta = getRiderMeta();
+  Object.keys(meta).forEach(k => {
+    const el = document.getElementById('rl-' + k);
+    if (el) el.textContent = meta[k].label;
+  });
+}
 
 // ── GENERATE QUOTE ──
 function generateQuote() {
@@ -491,7 +658,7 @@ function generateQuote() {
   document.querySelectorAll('.rider-row').forEach(row => {
     const cb = row.querySelector('input[type=checkbox]');
     if (!cb||!cb.checked) return;
-    const meta = riderMeta[cb.dataset.key];
+    const meta = getRiderMeta()[cb.dataset.key];
     let amtStr = '';
     if (meta.hasAmt) { const v=parseFloat(row.querySelector('.rider-amt')?.value)||0; amtStr=v>0?fmt(v):''; }
     checkedRiders.push({label:meta.label,amt:amtStr,hasAmt:meta.hasAmt});
@@ -505,7 +672,7 @@ function generateQuote() {
   const ncdCell = ncd ? `<div class="info-cell"><div class="lbl">NCD（免赔折扣）</div><div class="val">${ncd}%</div></div>` : '';
   const sumCell = sumInsured > 0 ? `<div class="info-cell"><div class="lbl">Sum Insured / 车保障金额</div><div class="val">RM ${sumInsured.toLocaleString('en-MY',{minimumFractionDigits:2})}</div></div>` : '';
   const valueTypeCell = `<div class="info-cell"><div class="lbl">Value Type / 保障类型</div><div class="val">${vehicleValueType==='agreed'?'Agreed Value':'Market Value'}</div></div>`;
-  const insurerLine = insurer ? `<div class="quote-insurer">🏢 ${insurer}</div>` : '';
+  const insurerLine = insurer ? `<div class="quote-insurer">🏢 ${insurer}${isZurich() ? ' — Z-Driver ' + CAR_PLAN_LABEL[carPlan] : ''}</div>` : '';
 
   document.getElementById('quote-output').innerHTML = `
     <div class="quote-header">
@@ -559,24 +726,14 @@ function generateQuote() {
   const shortInsurer = insurer ? insurer.replace(' General Insurance','').replace(' General Ins','') : '—';
 
   // Track which riders are NOT checked (for upsell line)
-  const allRiderLabels = {
-    windscreen: '大镜 Windscreen',
-    dpa:        'PA Driver Personal Accident',
-    fsp:        'Full Special Perils',
-    llp:        '乘客险 Legal Liability to Passengers',
-    lop:        '第三方乘客险 Legal Liability of Passengers',
-    wce:        'All Driver (Waiver of Excess)',
-    srcc:       'Strike, Riot & Civil Commotion',
-    tow:        '24-Hour Unlimited Towing',
-  };
   const checkedKeys = new Set();
   document.querySelectorAll('.rider-row').forEach(row => {
     const cb = row.querySelector('input[type=checkbox]');
     if (cb && cb.checked) checkedKeys.add(cb.dataset.key);
   });
-  const uncheckedLabels = Object.entries(allRiderLabels)
-    .filter(([k]) => !checkedKeys.has(k))
-    .map(([,v]) => v);
+  const uncheckedLabels = Object.entries(getRiderMeta())
+    .filter(([k]) => k !== 'ace' && !k.startsWith('z_') && !checkedKeys.has(k))
+    .map(([,v]) => v.label);
 
   let sumLines = [];
 
@@ -584,7 +741,7 @@ function generateQuote() {
   sumLines.push('你好！😊 你的车保险要更新了，我来通知你接下来的保险资讯：');
   sumLines.push('');
   sumLines.push('━━━━━━━━━━━━━━━━━━━━');
-  sumLines.push('🚗 ' + shortInsurer + ' plan');
+  sumLines.push('🚗 ' + shortInsurer + (isZurich() ? ' Z-Driver — ' + CAR_PLAN_LABEL[carPlan] : ' plan'));
   sumLines.push('车牌：' + plate);
   sumLines.push('保障期：' + period);
   sumLines.push('━━━━━━━━━━━━━━━━━━━━');
@@ -592,26 +749,15 @@ function generateQuote() {
   sumLines.push('💰 车保险 RM' + premium.toFixed(2));
   if (sumInsured > 0) sumLines.push('✅ Cover RM' + Number(sumInsured).toLocaleString('en-MY',{minimumFractionDigits:0}) + ' (' + (vehicleValueType==='agreed'?'Agreed Value':'Market Value') + ')');
 
-  const riderSumMap = {
-    windscreen: (amt) => '✅ 大镜' + (amt ? ' RM' + amt : ''),
-    dpa:        (amt) => '✅ PA' + (amt ? ' (sum assured RM' + amt + ')' : ''),
-    fsp:        ()    => '✅ Full Special Perils',
-    llp:        ()    => '✅ 乘客险',
-    lop:        ()    => '✅ 第三方乘客险',
-    wce:        ()    => '✅ All Driver',
-    srcc:       ()    => '✅ Strike, Riot & Civil Commotion',
-    tow:        ()    => '✅ 24-Hour Unlimited Towing',
-    ace:        (amt) => '⚠️ All Claim Excess' + (amt ? ': RM' + amt : ''),
-  };
   document.querySelectorAll('.rider-row').forEach(row => {
     const cb = row.querySelector('input[type=checkbox]');
     if (!cb || !cb.checked) return;
     const key = cb.dataset.key;
-    const fn = riderSumMap[key];
-    if (!fn) return;
+    const meta = getRiderMeta()[key];
+    if (!meta) return;
     let amtVal = '';
-    if (riderMeta[key].hasAmt) { const v = parseFloat(row.querySelector('.rider-amt')?.value)||0; if(v>0) amtVal=v.toFixed(0); }
-    sumLines.push(fn(amtVal));
+    if (meta.hasAmt) { const v = parseFloat(row.querySelector('.rider-amt')?.value)||0; if(v>0) amtVal=v.toFixed(0); }
+    sumLines.push('✅ ' + meta.label + (amtVal ? ' RM' + amtVal : ''));
   });
   getCustomRiders().forEach(r => {
     sumLines.push('✅ ' + r.label + (r.amt ? ' ' + r.amt : ''));
@@ -653,7 +799,8 @@ function generateQuote() {
     // Edit-restore fields
     _restore: JSON.stringify({
       name, plate, ncd, sumInsured, startDate, endDate, period, premium, roadtax, svc, delivery,
-      insurer: getInsurer(), vehicleValueType,
+      insurer: getInsurer(), vehicleValueType, carPlan,
+      isEv: document.getElementById('f_is_ev') ? document.getElementById('f_is_ev').checked : false,
       riders: (()=>{ const r={}; document.querySelectorAll('.rider-row').forEach(row=>{ const cb=row.querySelector('input[type=checkbox]'); if(cb){ r[cb.dataset.key]={checked:cb.checked,amt:row.querySelector('.rider-amt')?row.querySelector('.rider-amt').value:''}; } }); return r; })(),
       customRiders: getCustomRiders(),
     })
@@ -817,6 +964,18 @@ function restoreQuote(idx) {
         const customPill = document.querySelector('.ins-pill:last-child');
         if(customPill) { selectInsurer(customPill,'__custom__'); document.getElementById('insurer-custom').value = data.insurer; }
       }
+    }
+
+    // Zurich Car Plan
+    if(data.carPlan) {
+      const planPill = document.querySelector('#car-plan-pills .plan-pill[data-plan="'+data.carPlan+'"]');
+      if(planPill) selectCarPlan(planPill, data.carPlan);
+    }
+
+    // EV checkbox
+    if(data.isEv) {
+      const evCb = document.getElementById('f_is_ev');
+      if(evCb) { evCb.checked = true; toggleEvRiders(); }
     }
 
     // Riders
