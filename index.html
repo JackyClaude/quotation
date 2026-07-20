@@ -628,6 +628,10 @@ function getRiderMeta() {
   });
   return out;
 }
+// 生成报价单/文字摘要时，把 "Endorsement 89 – " 这类编号前缀去掉，只保留 rider 名称本身
+function stripEndorsement(label) {
+  return label.replace(/^Endorsement\s+[^\u2013]+\u2013\s*/, '').trim();
+}
 function updateRiderLabelsUI() {
   const meta = getRiderMeta();
   Object.keys(meta).forEach(k => {
@@ -661,7 +665,7 @@ function generateQuote() {
     const meta = getRiderMeta()[cb.dataset.key];
     let amtStr = '';
     if (meta.hasAmt) { const v=parseFloat(row.querySelector('.rider-amt')?.value)||0; amtStr=v>0?fmt(v):''; }
-    checkedRiders.push({label:meta.label,amt:amtStr,hasAmt:meta.hasAmt});
+    checkedRiders.push({label:stripEndorsement(meta.label),amt:amtStr,hasAmt:meta.hasAmt});
   });
   const allRiders = [...checkedRiders, ...getCustomRiders()];
 
@@ -708,7 +712,7 @@ function generateQuote() {
       <div class="section-heading">付款资料 Payment Details</div>
       <div class="bank-box">
         <div><div class="b-label">Bank / 银行</div><div class="b-bank">Maybank</div><div class="b-type">Current Account（活期户口）</div></div>
-        <div class="b-acc-wrap"><div class="b-acc-lbl">Account No. / 账号</div><div class="b-acc">5013 0170 7441</div><div class="b-name">CGW Risk Management</div></div>
+        <div class="b-acc-wrap"><div class="b-acc-lbl">Account No. / 账号</div><div class="b-acc">5013-0170-7441</div><div class="b-name">CGW Risk Management</div></div>
       </div>
       <div style="margin-top:16px;background:#fffbea;border:1.5px solid #f0d98c;border-radius:10px;padding:14px 18px;font-size:13px;line-height:1.9;color:#5a4500;">
         📋 转账后请 send 给我 <strong>payment receipt</strong>，谢谢！
@@ -733,7 +737,7 @@ function generateQuote() {
   });
   const uncheckedLabels = Object.entries(getRiderMeta())
     .filter(([k]) => k !== 'ace' && !k.startsWith('z_') && !checkedKeys.has(k))
-    .map(([,v]) => v.label);
+    .map(([,v]) => stripEndorsement(v.label));
 
   let sumLines = [];
 
@@ -757,7 +761,7 @@ function generateQuote() {
     if (!meta) return;
     let amtVal = '';
     if (meta.hasAmt) { const v = parseFloat(row.querySelector('.rider-amt')?.value)||0; if(v>0) amtVal=v.toFixed(0); }
-    sumLines.push('✅ ' + meta.label + (amtVal ? ' RM' + amtVal : ''));
+    sumLines.push('✅ ' + stripEndorsement(meta.label) + (amtVal ? ' RM' + amtVal : ''));
   });
   getCustomRiders().forEach(r => {
     sumLines.push('✅ ' + r.label + (r.amt ? ' ' + r.amt : ''));
@@ -782,7 +786,7 @@ function generateQuote() {
   sumLines.push('🏦 请 transfer 至：');
   sumLines.push('Maybank（Current Account）');
   sumLines.push('CGW Risk Management');
-  sumLines.push('5013 0170 7441');
+  sumLines.push('5013-0170-7441');
   sumLines.push('');
   sumLines.push('Transfer 后请 send 给我 payment receipt，谢谢！😊');
   if (!delivery) {
@@ -1471,7 +1475,7 @@ function generateTravelQuote() {
       <div class="section-heading">付款资料 Payment Details</div>
       <div class="bank-box">
         <div><div class="b-label">Bank / 银行</div><div class="b-bank">Maybank</div><div class="b-type">Current Account（活期户口）</div></div>
-        <div class="b-acc-wrap"><div class="b-acc-lbl">Account No. / 账号</div><div class="b-acc">5013 0170 7441</div><div class="b-name">CGW Risk Management</div></div>
+        <div class="b-acc-wrap"><div class="b-acc-lbl">Account No. / 账号</div><div class="b-acc">5013-0170-7441</div><div class="b-name">CGW Risk Management</div></div>
       </div>
       <div style="margin-top:16px;background:#fffbea;border:1.5px solid #f0d98c;border-radius:10px;padding:14px 18px;font-size:13px;line-height:1.9;color:#5a4500;">
         📋 转账后请 send 给我 <strong>payment receipt</strong>，谢谢！
@@ -1510,7 +1514,7 @@ function generateTravelQuote() {
     '🏦 请 transfer 至：',
     'Maybank（Current Account）',
     'CGW Risk Management',
-    '5013 0170 7441',
+    '5013-0170-7441',
     '',
     'Transfer 后请 send 给我 payment receipt，谢谢！😊',
   ];
